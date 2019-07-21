@@ -1,0 +1,23 @@
+/* Following https://github.com/IntershopCommunicationsAG/javacc-gradle-plugin */
+plugins {
+    id 'com.intershop.gradle.javacc' version '3.0.3'
+}
+
+javacc {
+    // configuration container for all javacc configurations
+    configs {
+        template {
+            inputFile = file('src/main/config/ProtoParser.jjt')
+            packageName = 'protongo'
+            lookahead = '2'
+        }
+    }
+}
+
+dependencies {
+    javacc "net.java.dev.javacc:javacc:7.0.4"
+}
+
+repositories {
+    jcenter()
+}
