@@ -1,0 +1,5 @@
+syntax = "proto2";
+message SearchRequest {
+  repeated int32 samples = 4 [packed=true];
+}
+

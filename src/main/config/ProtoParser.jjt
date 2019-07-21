@@ -1,0 +1,366 @@
+/**
+ *
+ *  Protocol Buffers grammar  for JavaCC
+ *
+ *  Contributed by Toshikazu Ando (foobar@em.boo.jp)
+ *
+ * @see "https://developers.google.com/protocol-buffers/docs/proto3"
+ *
+ */
+
+options {
+    STATIC=false;
+    MULTI=true;
+    VISITOR=true;
+    SANITY_CHECK=true;
+    DEBUG_PARSER=false;
+    DEBUG_TOKEN_MANAGER=false;
+}
+
+PARSER_BEGIN(ProtoParser)
+
+/**
+ *
+ *  Protocol Buffers grammar  for JavaCC
+ *
+ *  Contributed by Toshikazu Ando (foobar@em.boo.jp)
+ *
+ *  * @see "https://developers.google.com/protocol-buffers/docs/proto3"
+ */
+public class ProtoParser {
+}
+
+PARSER_END(ProtoParser)
+
+SKIP :
+{
+  " "
+| "\t"
+| "\n"
+| "\r"
+}
+
+SPECIAL_TOKEN :
+{
+  <SINGLE_LINE_COMMENT: "//" (~["\n","\r"])* ("\n"|"\r"|"\r\n")>
+}
+
+
+TOKEN :
+{
+  <CSTRING_TKN: "\"" ( ~["\""] )* "\"" >
+| <EQUL_TKN: "=">
+| <SEMI_COLON_TKN: ";">
+| <COLON_TKN: ":">
+| <CONNMA_TKN: ",">
+| <DOT_TKN: ".">
+| <TO_TKN: "to">
+| <LEFTBRACE_TKN: "{">
+| <RIGHTBRACE_TKN: "}">
+| <LEFTPAREN_TKN: "(">
+| <RIGHTPAREN_TKN: ")">
+| <LEFTBRACKET_TKN: "[">
+| <RIGHTBRACKET_TKN: "]">
+| <LESSTHAN_TKN: "<">
+| <GRATETHAN_TKN: ">">
+| <SYNTAX_TKN: "syntax">
+| <BOOLEAN_TKN: "true" | "false">
+| <ATTRIBUTE_TKN: "required"
+                | "optional">
+| <OPTION_TKN: "option">
+| <IMPORT_TKN: "import">
+| <PUBLIC_TKN: "public">
+| <PACKAGE_TKN: "package">
+| <SERVICE_TKN: "service">
+| <MESSAGE_TKN: "message">
+| <ENUM_TKN: "enum">
+| <ONEOF_TKN: "oneof">
+| <GROUP_TKN: "group">
+| <EXTENTIONS_TKN: "extensions">
+| <EXTEND_TKN: "extend">
+| <MAP_TKN: "map">
+| <RESERVED_TKN: "reserved">
+| <REPEATED_TKN: "repeated">
+| <RETURNS_TKN: "returns">
+| <STREAM_TKN: "stream">
+| <TYPE_TKN: "double"
+           | "float"
+           | "int32"
+           | "int64"
+           | "uint32"
+           | "uint64"
+           | "sint32"
+           | "sint64"
+           | "fixed32"
+           | "fixed64"
+           | "sfixed32"
+           | "sfixed64"
+           | "bool"
+           | "string"
+           | "bytes"
+           | "Any">
+| <RPC_TKN: "rpc">
+| <NUMBER_TKN: "0" | (["-"])?["1"-"9"](["0"-"9"])* | "max">
+| <DOUBLE_TKN: ("0" | (["-"])?["1"-"9"](["0"-"9"])*) "." (["0"-"9"])*>
+| <IDENT_TKN: ["_","a"-"z","A"-"Z"] (["_","a"-"z","A"-"Z","0"-"9"])*>
+}
+
+ASTInput Input() : {
+} { 
+  (ImportPart()
+   | SyntaxPart()
+   | OptionPart()
+   | PackagePart()
+   | ServicePart()
+   | MessagePart()
+   | EnumPart()
+   | ExtendPart())* {return jjtThis;}
+}
+
+void ImportPart() : {
+} { 
+  <IMPORT_TKN> [PublicPart()] CStringPart() <SEMI_COLON_TKN>
+}
+
+void PublicPart() : {
+} {
+    <PUBLIC_TKN>
+}
+
+void ValuePart() : {
+    Token t;
+} {     
+  BooleanPart()
+   | CStringPart()
+   | NumberPart()
+   | DoublePart()
+   | IndentPart()
+   | BraceValuePart()
+}
+void BooleanPart() : {
+    Token t;
+} {
+    t = <BOOLEAN_TKN> { jjtThis.value = t;}
+}
+void CStringPart() : { 
+    Token t;
+} {
+    t = <CSTRING_TKN> { jjtThis.value = t;}
+}
+void NumberPart() : { 
+    Token t;
+} {
+    t = <NUMBER_TKN> { jjtThis.value = t;}
+}
+void DoublePart() : { 
+    Token t;
+} {
+    t = <DOUBLE_TKN> { jjtThis.value = t;}
+}
+void IndentPart() : {
+    Token t;
+} {
+    t = <IDENT_TKN> { jjtThis.value = t;}
+}
+void BraceValuePart() : {
+} {
+   <LEFTBRACE_TKN>
+   (BraceValueOnePart())*
+   <RIGHTBRACE_TKN>
+}
+void BraceValueOnePart() : {
+} {
+   IndentPart() <COLON_TKN> (BraceValueOneBracketPart() | ValuePart())
+}
+void BraceValueOneBracketPart() : {
+} {
+   <LEFTBRACKET_TKN>
+   ValuePart() (<CONNMA_TKN> ValuePart())*
+   <RIGHTBRACKET_TKN>
+}
+void SyntaxPart() : {
+} { 
+   <SYNTAX_TKN> <EQUL_TKN> CStringPart() <SEMI_COLON_TKN>
+}
+void OptionPart() : {
+} {     
+    <OPTION_TKN> ClassPart() <EQUL_TKN> ValuePart() <SEMI_COLON_TKN>
+}
+void ClassPart() : {
+} {
+  (IndentPart()|CustomOptionsPart()) (<DOT_TKN> (IndentPart()|CustomOptionsPart()))*
+}
+void CustomOptionsPart() : {
+} {
+   <LEFTPAREN_TKN> ClassPart() <RIGHTPAREN_TKN>
+}
+void KeyPart() : {
+    Token t;
+} {
+   t = <IDENT_TKN> { jjtThis.value = t;}
+    | t = <MESSAGE_TKN> { jjtThis.value = t;}
+    | t = <PACKAGE_TKN> { jjtThis.value = t;}
+    | t = <SERVICE_TKN> { jjtThis.value = t;}
+}
+
+void PackagePart() : {
+} { 
+  <PACKAGE_TKN> ClassPart() <SEMI_COLON_TKN>
+}
+
+void ServicePart() : {
+} { 
+  <SERVICE_TKN> <IDENT_TKN>
+   <LEFTBRACE_TKN>
+   (OptionPart()
+    |RpcPart())*
+   <RIGHTBRACE_TKN>
+}
+void RpcPart() : {
+} { 
+  <RPC_TKN> ClassPart()
+   <LEFTPAREN_TKN>
+   [(StreamPart())? ClassPart()]
+   <RIGHTPAREN_TKN>
+   <RETURNS_TKN>
+   
+   <LEFTPAREN_TKN>
+   [(StreamPart())? ClassPart()]
+   <RIGHTPAREN_TKN>
+   
+   (RpcBracePart()|<SEMI_COLON_TKN>)
+}
+void StreamPart() : {
+} {     
+    <STREAM_TKN>
+}
+void RpcBracePart() : {
+} {     
+    <LEFTBRACE_TKN>
+    (OptionPart())*
+    <RIGHTBRACE_TKN>
+}
+
+void MessagePart() : {
+} { 
+  <MESSAGE_TKN> ClassPart() MessageBranchePart()
+}
+void MessageBranchePart() : {
+} {
+   <LEFTBRACE_TKN>
+   (AttributeMemberPart()
+    |EnumPart()
+    |ReservedPart()
+    |OneOfPart()
+    |MapPart()
+    |MessagePart()
+    |ExtentionsPart()
+    |ExtendPart()
+    |OptionPart()
+    |<SEMI_COLON_TKN>)*
+   <RIGHTBRACE_TKN>
+}
+void AttributeMemberPart() : {
+} { 
+  [AttributePart()][RepeatedPart()]
+  (MemberPart()|GroupPart())
+}
+void MemberPart() : {
+} { 
+  ClassOrTypePart() KeyPart() <EQUL_TKN> NumberPart() [BracketPart()] <SEMI_COLON_TKN>
+}
+void AttributePart() : {
+    Token t;
+} { 
+    t = <ATTRIBUTE_TKN> { jjtThis.value = t;}
+}
+void RepeatedPart() : {
+} { 
+    <REPEATED_TKN>
+}
+void GroupPart() : {
+} {
+  <GROUP_TKN> ClassPart() <EQUL_TKN> NumberPart()
+  MessageBranchePart()
+}
+void ClassOrTypePart() : {
+} {     
+  TypePart()
+  | ClassPart()
+}
+void TypePart() : {
+    Token t;
+} {     
+  t = <TYPE_TKN> { jjtThis.value = t;}
+}
+void BracketPart() : {
+} { 
+  <LEFTBRACKET_TKN>
+  (BracketMemberPart() (<CONNMA_TKN> BracketMemberPart())*)?
+  <RIGHTBRACKET_TKN>
+}
+void BracketMemberPart() : {
+} { 
+  ClassPart() <EQUL_TKN> ValuePart()
+}
+
+void EnumPart() : {
+} { 
+  <ENUM_TKN>
+   ClassPart()
+   <LEFTBRACE_TKN>
+   (EnumMemberPart())*
+   <RIGHTBRACE_TKN>
+}
+void EnumMemberPart() : {
+} { 
+  [EnumOptionMemberPart()]
+  ClassPart() <EQUL_TKN> ValuePart() [BracketPart()] <SEMI_COLON_TKN>
+}
+void EnumOptionMemberPart() : {
+} { 
+  <OPTION_TKN>
+}
+
+void ReservedPart() : {
+} { 
+  <RESERVED_TKN> ValuePart() (DeviderPart() ValuePart())* <SEMI_COLON_TKN>
+}
+void DeviderPart() : {
+    Token t;
+} {
+    t = <CONNMA_TKN> { jjtThis.value = t;}
+    | t = <TO_TKN> { jjtThis.value = t;}
+}
+
+void OneOfPart() : {
+} { 
+  <ONEOF_TKN>
+   ClassPart()
+   <LEFTBRACE_TKN>
+   (MemberPart())*
+   <RIGHTBRACE_TKN>
+}
+
+void MapPart() : {
+} { 
+
+  <MAP_TKN>
+  <LESSTHAN_TKN>
+   ClassOrTypePart()
+   <CONNMA_TKN>
+   ClassOrTypePart()
+  <GRATETHAN_TKN>
+  KeyPart() <EQUL_TKN> NumberPart() <SEMI_COLON_TKN>
+}
+
+void ExtentionsPart() : {
+} { 
+
+  <EXTENTIONS_TKN> NumberPart() <TO_TKN> NumberPart() <SEMI_COLON_TKN>
+}
+void ExtendPart() : {
+} { 
+  <EXTEND_TKN> ClassPart() MessageBranchePart()
+}
+/* END */

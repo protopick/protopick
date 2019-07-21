@@ -1,0 +1,7 @@
+syntax = "proto2";
+
+message SampleMessage {
+  map<string, Project> projects = 3;
+}
+
+

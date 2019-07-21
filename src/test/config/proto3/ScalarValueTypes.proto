@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+message ScalarValueTypes {
+    double work001 = 1;
+    float work002 = 2;
+    int32 work003 = 3;
+    int64 work004 = 4;
+    uint32 work005 = 5;
+    uint64 work006 = 6;
+    sint32 work007 = 7;
+    sint64 work008 = 8;
+    fixed32 work009 = 9;
+    fixed64 work010 = 10;
+    sfixed32 work011 = 11;
+    sfixed64 work012 = 12;
+    bool work013 = 13;
+    string work014 = 14;
+    bytes work015 = 15;
+}

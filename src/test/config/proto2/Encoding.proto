@@ -1,0 +1,24 @@
+syntax = "proto2";
+
+//A Simple Message
+message Test1 {
+  required int32 a = 1;
+}
+
+//Strings
+message Test2 {
+  required string b = 2;
+}
+
+//Embedded Messages
+message Test3 {
+  required Test1 c = 3;
+}
+
+//Packed Repeated Fields
+message Test4 {
+  repeated int32 d = 4 [packed=true];
+}
+
+
+

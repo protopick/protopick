@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+package foo.bar;
+message Open {
+  //...
+}
+
+message Foo {
+  //...
+  required foo.bar.Open open = 1;
+  //...
+}
+

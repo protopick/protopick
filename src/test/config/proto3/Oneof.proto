@@ -1,0 +1,9 @@
+syntax = "proto3";
+import "google/protobuf/any.proto";
+
+message SampleMessage {
+  oneof test_oneof {
+    string name = 4;
+    SubMessage sub_message = 9;
+  }
+}

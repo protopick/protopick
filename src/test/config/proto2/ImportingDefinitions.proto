@@ -1,0 +1,19 @@
+syntax = "proto2";
+
+import "myproject/other_protos.proto";
+
+
+// new.proto
+// All definitions are moved here
+
+// old.proto
+// This is the proto that all clients are importing.
+import public "new.proto";
+import "other.proto";
+
+// client.proto
+import "old.proto";
+// You use definitions from old.proto and new.proto, but not other.proto
+
+
+

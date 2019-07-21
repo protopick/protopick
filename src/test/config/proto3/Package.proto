@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package foo.bar;
+message Open {
+    string message = 1;
+}
+message Foo {
+  //...
+  foo.bar.Open open = 1;
+  //...
+}
+
+

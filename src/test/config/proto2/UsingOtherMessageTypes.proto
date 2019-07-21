@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+message SearchResponse {
+  repeated Result result = 1;
+}
+
+message Result {
+  required string url = 1;
+  optional string title = 2;
+  repeated string snippets = 3;
+}
+
+
