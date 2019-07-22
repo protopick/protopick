@@ -1,6 +1,7 @@
 /* Following https://github.com/IntershopCommunicationsAG/javacc-gradle-plugin */
 plugins {
     id 'com.intershop.gradle.javacc' version '3.0.3'
+    id  'java'
 }
 
 javacc {
@@ -10,6 +11,17 @@ javacc {
             inputFile = file('src/main/config/ProtoParser.jjt')
             packageName = 'protongo'
             lookahead = '2'
+            forceLaCheck = true
+        }
+    }
+}
+
+
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java', 'build/generated/javacc/template']
         }
     }
 }

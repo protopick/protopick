@@ -1,33 +1,49 @@
 /**
- *
- *  Protocol Buffers grammar  for JavaCC
- *
+ *  Protocol Buffers v.3 grammar  for JavaCC
  *  Contributed by Toshikazu Ando (foobar@em.boo.jp)
- *
- * @see "https://developers.google.com/protocol-buffers/docs/proto3"
- *
  */
 
 options {
+    /* Must not be STATIC, because ProtoParserContext creates parsers for any included files. */
     STATIC=false;
-    MULTI=true;
-    VISITOR=true;
     SANITY_CHECK=true;
     DEBUG_PARSER=false;
     DEBUG_TOKEN_MANAGER=false;
 }
 
 PARSER_BEGIN(ProtoParser)
+package protongo.parser;
 
-/**
- *
- *  Protocol Buffers grammar  for JavaCC
- *
- *  Contributed by Toshikazu Ando (foobar@em.boo.jp)
- *
- *  * @see "https://developers.google.com/protocol-buffers/docs/proto3"
- */
+/** Protobuf 3 grammar, with support for collecting limited type information. Purpose: Generate a custom schema.
+    When you want to generate a schema for a given "message," add a (single-line) comment immediately before
+    that "message." In that comment have TARGET(customValue). Then "message" BNF rule picks it up through .specialToken.
+
+    Before you instantiate `new ProtoParser(streamOrOther)`, first create a `new ProtoParserContext()`
+    in the same thread. */
 public class ProtoParser {
+    /* Situation: We're parsing a message. One of its fields refers to another type (a message, enum...).
+       That type reference is either:
+       1. Unqualified (no dot). That's a name of another type in the same package (in the same or a different file).
+       2. Qualified (with a dot or several) type with a package name: name.of.a.package.nameOfType.
+       2. Qualified (with a dot or several) sub-message: nameOfAnotherMessage.nameOfItsInnerMessage...
+       where nameOfAnotherMessage may contain a package name or not.
+       If that other type is in the same file, we don't want to start parsing it right now. We've either already
+       parsed it, or we will parse it later, in this same ProtoParser instance.
+       Hence, BNF rules only register Type instances with ProtoParserContext. But they're validated and "compiled" later.
+    */
+
+    /* More convenient/intuitive than getContext(). Plus, if we didn't have `context` as final, then
+       BNF grammar rules could reassign `context` by mistake. */
+    final ProtoParserContext context = registerWithContext();
+
+    private ProtoParserContext registerWithContext() {
+        // When this method is called, `this` instance if not complete yet. That's OK.
+        if (context!=null) {
+            throw new IllegalStateException("Parser already has its context set.");
+        }
+        ProtoParserContext.register (this);
+        return ProtoParserContext.perThread();
+    }
 }
 
 PARSER_END(ProtoParser)
@@ -105,8 +121,8 @@ TOKEN :
 | <IDENT_TKN: ["_","a"-"z","A"-"Z"] (["_","a"-"z","A"-"Z","0"-"9"])*>
 }
 
-ASTInput Input() : {
-} { 
+void Input() : {
+} {
   (ImportPart()
    | SyntaxPart()
    | OptionPart()
@@ -114,7 +130,7 @@ ASTInput Input() : {
    | ServicePart()
    | MessagePart()
    | EnumPart()
-   | ExtendPart())* {return jjtThis;}
+   | ExtendPart())*
 }
 
 void ImportPart() : {
@@ -138,29 +154,25 @@ void ValuePart() : {
    | BraceValuePart()
 }
 void BooleanPart() : {
-    Token t;
+    //Token t;
 } {
-    t = <BOOLEAN_TKN> { jjtThis.value = t;}
+    /* t = */<BOOLEAN_TKN> /* { code...}*/
 }
 void CStringPart() : { 
-    Token t;
 } {
-    t = <CSTRING_TKN> { jjtThis.value = t;}
+    <CSTRING_TKN>
 }
 void NumberPart() : { 
-    Token t;
 } {
-    t = <NUMBER_TKN> { jjtThis.value = t;}
+    <NUMBER_TKN>
 }
 void DoublePart() : { 
-    Token t;
 } {
-    t = <DOUBLE_TKN> { jjtThis.value = t;}
+    <DOUBLE_TKN>
 }
 void IndentPart() : {
-    Token t;
 } {
-    t = <IDENT_TKN> { jjtThis.value = t;}
+    <IDENT_TKN>
 }
 void BraceValuePart() : {
 } {
@@ -195,12 +207,11 @@ void CustomOptionsPart() : {
    <LEFTPAREN_TKN> ClassPart() <RIGHTPAREN_TKN>
 }
 void KeyPart() : {
-    Token t;
 } {
-   t = <IDENT_TKN> { jjtThis.value = t;}
-    | t = <MESSAGE_TKN> { jjtThis.value = t;}
-    | t = <PACKAGE_TKN> { jjtThis.value = t;}
-    | t = <SERVICE_TKN> { jjtThis.value = t;}
+   <IDENT_TKN>
+    | <MESSAGE_TKN>
+    | <PACKAGE_TKN>
+    | <SERVICE_TKN>
 }
 
 void PackagePart() : {
@@ -270,9 +281,8 @@ void MemberPart() : {
   ClassOrTypePart() KeyPart() <EQUL_TKN> NumberPart() [BracketPart()] <SEMI_COLON_TKN>
 }
 void AttributePart() : {
-    Token t;
-} { 
-    t = <ATTRIBUTE_TKN> { jjtThis.value = t;}
+} {
+    <ATTRIBUTE_TKN>
 }
 void RepeatedPart() : {
 } { 
@@ -289,9 +299,8 @@ void ClassOrTypePart() : {
   | ClassPart()
 }
 void TypePart() : {
-    Token t;
-} {     
-  t = <TYPE_TKN> { jjtThis.value = t;}
+} {
+  <TYPE_TKN>
 }
 void BracketPart() : {
 } { 
@@ -327,10 +336,9 @@ void ReservedPart() : {
   <RESERVED_TKN> ValuePart() (DeviderPart() ValuePart())* <SEMI_COLON_TKN>
 }
 void DeviderPart() : {
-    Token t;
 } {
-    t = <CONNMA_TKN> { jjtThis.value = t;}
-    | t = <TO_TKN> { jjtThis.value = t;}
+    <CONNMA_TKN>
+    | <TO_TKN>
 }
 
 void OneOfPart() : {
