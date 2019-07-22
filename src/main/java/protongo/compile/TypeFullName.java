@@ -1,13 +1,19 @@
-package protongo.parser;
+package protongo.compile;
+
+import protongo.parser.ProtoParserConstants;
+import protongo.parser.Token;
 
 /** This represents a Message, sub-sub...Message, an Enum... */
-public class Type implements Comparable<Type> {
+public class TypeFullName implements Comparable<TypeFullName> {
     /*  Empty string is replaced with null. */
     private final String packageName;
     private final String name;
-    private final Type parent;
+    private final TypeFullName parent;
+    // private final int tokenKind;
 
-    private Type (Type givenParent, String givenPackage, String givenName) {
+    /* @param token Indicates what kind of 'type' (e.g. "message", "enum"...) this identifier is for. It may be null
+    * for usages that we're not intereste in (for example other usages of ClassPart BNF rule). */
+    private TypeFullName (/*Token token,*/TypeFullName givenParent, String givenPackage, String givenName) {
         parent = givenParent;
         packageName = givenPackage!=null && !givenPackage.isEmpty()
                 ? givenPackage
@@ -15,14 +21,15 @@ public class Type implements Comparable<Type> {
         if (givenName==null || givenName.isEmpty())
             throw new IllegalArgumentException("Type name must not be empty.");
         name = givenName;
+        // if (parent==null && token.kind!=ProtoParserConstants.MESSAGE_TKN ) throw new IllegalArgumentException("Top-level type must be a message, not a " +token.image);
     }
 
     /** @param givenPackage If null or an empty string, then it's no package/default package. */
-    Type (String givenPackage, String givenName) {
+    public TypeFullName (String givenPackage, String givenName) {
         this (null, givenPackage, givenName);
     }
 
-    Type (Type givenParent, String givenName) {
+    public TypeFullName (TypeFullName givenParent, String givenName) {
         this (givenParent, givenParent.packageName, givenName);
     }
 
@@ -35,11 +42,12 @@ public class Type implements Comparable<Type> {
             return name;
     }
 
-    public int compareTo(Type other) {
+    public int compareTo(TypeFullName other) {
         return fullName().compareTo( other.fullName() );
     }
-    public boolean equals(Type other) {
-        return other!=null && fullName().equals( other.fullName() );
+    @Override
+    public boolean equals(Object other) {
+        return other!=null && fullName().equals( ((TypeFullName)other).fullName() );
     }
     public int hashCode() {
         return fullName().hashCode();

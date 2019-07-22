@@ -14,33 +14,29 @@ options {
 PARSER_BEGIN(ProtoParser)
 package protongo.parser;
 
+import protongo.compile.TypeFullName;
+import java.util.regex.Pattern;
+
 /** Protobuf 3 grammar, with support for collecting limited type information. Purpose: Generate a custom schema.
     When you want to generate a schema for a given "message," add a special (single-line) comment immediately before
-    that "message." See specialCommentInfo().
+    that "message." See handlingInstruction(Token) and how it's used.
 
     Before you instantiate `new ProtoParser(streamOrOther)`, first create a `new ProtoParserContext()`
     in the same thread. */
 public class ProtoParser {
+    private static final Pattern HANDLING_INSTRUCTION= Pattern.compile("GENERATE *DB *SCHEMA");
 
     /** If the given messageToken has a special comment immediately before it, then this extracts its value.
         Otherwise it returns null. */
-    private static String specialCommentInfo(Token messageToken) {
+    private void registerHandlingInstruction(TypeFullName type, Token messageToken) {
         if (messageToken.specialToken!=null) {
-
+            String image = messageToken.specialToken.image;
+            if (HANDLING_INSTRUCTION.matcher(image).matches()) {
+                HandlingInstruction instruction= new HandlingInstruction();
+                context.instructions.put (type, instruction);
+            }
         }
-        return null;
     }
-
-    /* Situation: We're parsing a message. One of its fields refers to another type (a message, enum...).
-       That type reference is either:
-       1. Unqualified (no dot). That's a name of another type in the same package (in the same or a different file).
-       2. Qualified (with a dot or several) type with a package name: name.of.a.package.nameOfType.
-       2. Qualified (with a dot or several) sub-message: nameOfAnotherMessage.nameOfItsInnerMessage...
-       where nameOfAnotherMessage may contain a package name or not.
-       If that other type is in the same file, we don't want to start parsing it right now. We've either already
-       parsed it, or we will parse it later, in this same ProtoParser instance.
-       Hence, BNF rules only register Type instances with ProtoParserContext. But they're validated and "compiled" later.
-    */
 
     /* More convenient/intuitive than getContext(). Plus, if we didn't have `context` as final, then
        BNF grammar rules could reassign `context` by mistake. */
@@ -138,8 +134,8 @@ void Input() : {
    | OptionPart()
    | PackagePart()
    | ServicePart()
-   | MessagePart()
-   | EnumPart()
+   | MessagePart(null)
+   | EnumPart(null)
    | ExtendPart())*
 }
 
@@ -178,9 +174,10 @@ void DoublePart() : {
 } {
     <DOUBLE_TKN>
 }
-void IndentPart() : {
+Token IndentPart() : {
+  Token t;
 } {
-    <IDENT_TKN>
+    t=<IDENT_TKN> {return t;}
 }
 void BraceValuePart() : {
 } {
@@ -204,15 +201,31 @@ void SyntaxPart() : {
 }
 void OptionPart() : {
 } {     
-    <OPTION_TKN> ClassPart() <EQUL_TKN> ValuePart() <SEMI_COLON_TKN>
+    <OPTION_TKN> ClassPartNoCapture() <EQUL_TKN> ValuePart() <SEMI_COLON_TKN>
 }
-void ClassPart() : {
+
+void ClassPartNoCapture() : {
 } {
-  (IndentPart()|CustomOptionsPart()) (<DOT_TKN> (IndentPart()|CustomOptionsPart()))*
+  ClassPart(null, null)
+}
+
+/** typeToken indicates what kind of 'type' (e.g. "message", "enum"...) this identifier is for. */
+TypeFullName ClassPart(Token typeToken, TypeFullName parent) : {
+ TypeFullName type;
+ Token t;
+} {
+  ( t=IndentPart() {type= new TypeFullName(/*typeToken*/parent, t.image);}
+  | CustomOptionsPart() {type= parent;}
+  )
+  (<DOT_TKN> ( t=IndentPart() {type= new TypeFullName(/*typeToken, */type, t.image);}
+       | CustomOptionsPart()
+       )
+  )*
+  {return type;}
 }
 void CustomOptionsPart() : {
 } {
-   <LEFTPAREN_TKN> ClassPart() <RIGHTPAREN_TKN>
+   <LEFTPAREN_TKN> ClassPartNoCapture() <RIGHTPAREN_TKN>
 }
 void KeyPart() : {
 } {
@@ -224,7 +237,7 @@ void KeyPart() : {
 
 void PackagePart() : {
 } { 
-  <PACKAGE_TKN> ClassPart() <SEMI_COLON_TKN>
+  <PACKAGE_TKN> ClassPartNoCapture() <SEMI_COLON_TKN>
 }
 
 void ServicePart() : {
@@ -237,14 +250,14 @@ void ServicePart() : {
 }
 void RpcPart() : {
 } { 
-  <RPC_TKN> ClassPart()
+  <RPC_TKN> ClassPartNoCapture()
    <LEFTPAREN_TKN>
-   [(StreamPart())? ClassPart()]
+   [(StreamPart())? ClassPartNoCapture()]
    <RIGHTPAREN_TKN>
    <RETURNS_TKN>
    
    <LEFTPAREN_TKN>
-   [(StreamPart())? ClassPart()]
+   [(StreamPart())? ClassPartNoCapture()]
    <RIGHTPAREN_TKN>
    
    (RpcBracePart()|<SEMI_COLON_TKN>)
@@ -260,31 +273,31 @@ void RpcBracePart() : {
     <RIGHTBRACE_TKN>
 }
 
-void MessagePart() : {
-    Token mt;
-} { 
-  mt=<MESSAGE_TKN>
+void MessagePart(TypeFullName parent) : {
+    Token t;
+    TypeFullName type;
+} {
+  t=<MESSAGE_TKN>
+  type=ClassPart(t, parent) MessageBranchePart(type)
   {
-    String special= specialCommentInfo(mt);
+    ProtoParserContext.perThread().addType(type);
+    registerHandlingInstruction(type, t);
   }
-  ClassPart() MessageBranchePart(special)
 }
-void MessageBranchePart(String special) : {
-    boolean isMessage = false;
+void MessageBranchePart(TypeFullName parent) : {
 } {
    <LEFTBRACE_TKN>
    (AttributeMemberPart()
-    |EnumPart()
+    |EnumPart(parent)
     |ReservedPart()
     |OneOfPart()
     |MapPart()
-    |MessagePart() { isMessage = true; }
+    |MessagePart(parent)
     |ExtentionsPart()
     |ExtendPart()
     |OptionPart()
     |<SEMI_COLON_TKN>)*
    <RIGHTBRACE_TKN>
-   {if (!isMessage) throw new IllegalStateException("Special comment (" +special+ " can be used for a 'message' only."); }
 }
 void AttributeMemberPart() : {
 } { 
@@ -305,41 +318,43 @@ void RepeatedPart() : {
 }
 void GroupPart() : {
 } {
-  <GROUP_TKN> ClassPart() <EQUL_TKN> NumberPart()
+  <GROUP_TKN> ClassPartNoCapture() <EQUL_TKN> NumberPart()
   MessageBranchePart(null)
 }
 void ClassOrTypePart() : {
 } {     
   TypePart()
-  | ClassPart()
+  | ClassPartNoCapture()
 }
 void TypePart() : {
 } {
   <TYPE_TKN>
 }
 void BracketPart() : {
-} { 
+} {
   <LEFTBRACKET_TKN>
   (BracketMemberPart() (<CONNMA_TKN> BracketMemberPart())*)?
   <RIGHTBRACKET_TKN>
 }
-void BracketMemberPart() : {
-} { 
-  ClassPart() <EQUL_TKN> ValuePart()
+void BracketMemberPart() : {} {
+  ClassPartNoCapture() <EQUL_TKN> ValuePart()
 }
 
-void EnumPart() : {
-} { 
-  <ENUM_TKN>
-   ClassPart()
+void EnumPart(TypeFullName parent) : {
+ Token t;
+ TypeFullName type;
+} {
+  t= <ENUM_TKN>
+   type=ClassPart(t, parent)
    <LEFTBRACE_TKN>
    (EnumMemberPart())*
    <RIGHTBRACE_TKN>
+   {throw new Error("TODO");}
 }
 void EnumMemberPart() : {
 } { 
   [EnumOptionMemberPart()]
-  ClassPart() <EQUL_TKN> ValuePart() [BracketPart()] <SEMI_COLON_TKN>
+  ClassPartNoCapture() <EQUL_TKN> ValuePart() [BracketPart()] <SEMI_COLON_TKN>
 }
 void EnumOptionMemberPart() : {
 } { 
@@ -359,7 +374,7 @@ void DeviderPart() : {
 void OneOfPart() : {
 } { 
   <ONEOF_TKN>
-   ClassPart()
+   ClassPartNoCapture()
    <LEFTBRACE_TKN>
    (MemberPart())*
    <RIGHTBRACE_TKN>
@@ -384,6 +399,6 @@ void ExtentionsPart() : {
 }
 void ExtendPart() : {
 } { 
-  <EXTEND_TKN> ClassPart() MessageBranchePart(null)
+  <EXTEND_TKN> ClassPartNoCapture() MessageBranchePart(null)
 }
 /* END */
