@@ -21,7 +21,7 @@ public final class ProtoParserContext {
         typesMutable.put(name, type);
     }
 
-    //public final Map<String, ProtoParser> messageTo= new HashMap<>();
+    public final Map<String, String> messageToSpecial= new HashMap<>();
 
 
     /* ------ Registration-specific ----- */

@@ -15,12 +15,22 @@ PARSER_BEGIN(ProtoParser)
 package protongo.parser;
 
 /** Protobuf 3 grammar, with support for collecting limited type information. Purpose: Generate a custom schema.
-    When you want to generate a schema for a given "message," add a (single-line) comment immediately before
-    that "message." In that comment have TARGET(customValue). Then "message" BNF rule picks it up through .specialToken.
+    When you want to generate a schema for a given "message," add a special (single-line) comment immediately before
+    that "message." See specialCommentInfo().
 
     Before you instantiate `new ProtoParser(streamOrOther)`, first create a `new ProtoParserContext()`
     in the same thread. */
 public class ProtoParser {
+
+    /** If the given messageToken has a special comment immediately before it, then this extracts its value.
+        Otherwise it returns null. */
+    private static String specialCommentInfo(Token messageToken) {
+        if (messageToken.specialToken!=null) {
+
+        }
+        return null;
+    }
+
     /* Situation: We're parsing a message. One of its fields refers to another type (a message, enum...).
        That type reference is either:
        1. Unqualified (no dot). That's a name of another type in the same package (in the same or a different file).
@@ -144,8 +154,7 @@ void PublicPart() : {
 }
 
 void ValuePart() : {
-    Token t;
-} {     
+} {
   BooleanPart()
    | CStringPart()
    | NumberPart()
@@ -154,9 +163,8 @@ void ValuePart() : {
    | BraceValuePart()
 }
 void BooleanPart() : {
-    //Token t;
 } {
-    /* t = */<BOOLEAN_TKN> /* { code...}*/
+    <BOOLEAN_TKN> /* { code...}*/
 }
 void CStringPart() : { 
 } {
@@ -253,10 +261,16 @@ void RpcBracePart() : {
 }
 
 void MessagePart() : {
+    Token mt;
 } { 
-  <MESSAGE_TKN> ClassPart() MessageBranchePart()
+  mt=<MESSAGE_TKN>
+  {
+    String special= specialCommentInfo(mt);
+  }
+  ClassPart() MessageBranchePart(special)
 }
-void MessageBranchePart() : {
+void MessageBranchePart(String special) : {
+    boolean isMessage = false;
 } {
    <LEFTBRACE_TKN>
    (AttributeMemberPart()
@@ -264,12 +278,13 @@ void MessageBranchePart() : {
     |ReservedPart()
     |OneOfPart()
     |MapPart()
-    |MessagePart()
+    |MessagePart() { isMessage = true; }
     |ExtentionsPart()
     |ExtendPart()
     |OptionPart()
     |<SEMI_COLON_TKN>)*
    <RIGHTBRACE_TKN>
+   {if (!isMessage) throw new IllegalStateException("Special comment (" +special+ " can be used for a 'message' only."); }
 }
 void AttributeMemberPart() : {
 } { 
@@ -291,7 +306,7 @@ void RepeatedPart() : {
 void GroupPart() : {
 } {
   <GROUP_TKN> ClassPart() <EQUL_TKN> NumberPart()
-  MessageBranchePart()
+  MessageBranchePart(null)
 }
 void ClassOrTypePart() : {
 } {     
@@ -369,6 +384,6 @@ void ExtentionsPart() : {
 }
 void ExtendPart() : {
 } { 
-  <EXTEND_TKN> ClassPart() MessageBranchePart()
+  <EXTEND_TKN> ClassPart() MessageBranchePart(null)
 }
 /* END */

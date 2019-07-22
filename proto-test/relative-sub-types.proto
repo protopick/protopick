@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+// "package" controls Golang package, but not Java package. It also controls when one .proto
+// file refers to messages from other .proto packages.
+package relative.sub.types;
+
+option java_multiple_files = true;
+option java_outer_classname = "RelativeSubTypes";
+option java_package = "relative.sub.types.java";
+
+message OuterMost {
+    string name = 1;
+    message Address {
+        message StreetAddress {
+            string unitNumber = 1; // String, as some units are called a Suite XYZ, some have a postfix (1b)..
+            string houseNumber = 2; // String, not a number, because it may be a range, a special name...
+        }
+    }
+
+    Address homeAddress = 2;
+
+    // Can't reference an inner-inner message by skipping the intermediate:
+    // StreetAddress workAddress = 3;
+    Address.StreetAddress temporaryAddress = 4;
+    relative.sub.types.OuterMost.Address workPostalAddress = 5;
+}

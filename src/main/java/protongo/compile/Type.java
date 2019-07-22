@@ -1,7 +1,7 @@
 package protongo.parser;
 
 /** This represents a Message, sub-sub...Message, an Enum... */
-public class Type {
+public class Type implements Comparable<Type> {
     /*  Empty string is replaced with null. */
     private final String packageName;
     private final String name;
@@ -33,5 +33,15 @@ public class Type {
             return packageName + '.' +name;
         else
             return name;
+    }
+
+    public int compareTo(Type other) {
+        return fullName().compareTo( other.fullName() );
+    }
+    public boolean equals(Type other) {
+        return other!=null && fullName().equals( other.fullName() );
+    }
+    public int hashCode() {
+        return fullName().hashCode();
     }
 }
