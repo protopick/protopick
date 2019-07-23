@@ -4,7 +4,9 @@
  */
 
 options {
-    /* Must not be STATIC, because ProtoParserContext creates parsers for any included files. */
+    /* Must not be STATIC, because the parser creates and runs extra parsers, one per "import" clause.
+    * For description of options see https://github.com/IntershopCommunicationsAG/javacc-gradle-plugin.
+    * */
     STATIC=false;
     SANITY_CHECK=true;
     DEBUG_PARSER=false;
@@ -14,7 +16,7 @@ options {
 PARSER_BEGIN(ProtoParser)
 package protongo.parser;
 
-import protongo.compile.TypeFullName;
+import protongo.compile.TypeName;
 import java.util.regex.Pattern;
 
 /** Protobuf 3 grammar, with support for collecting limited type information. Purpose: Generate a custom schema.
@@ -24,11 +26,19 @@ import java.util.regex.Pattern;
     Before you instantiate `new ProtoParser(streamOrOther)`, first create a `new ProtoParserContext()`
     in the same thread. */
 public class ProtoParser {
+    /** Mutable - set once parsed, used when instantiating other TypeName instances. 'package' is at the top of .proto files,
+    * hence this gets processed before BNF rules that need it. It's NOT per ProtoParserContext, but per-parser (per .proto file).
+    * <br/>
+    * Because of this, don't use auto-generated methods ReInit(), or reset packageName to null first.
+    * Then you'd have to call ProtoParserContext.unregisterContext(), too.
+    * */
+    private String packageName;
+
     private static final Pattern HANDLING_INSTRUCTION= Pattern.compile("GENERATE *DB *SCHEMA");
 
     /** If the given messageToken has a special comment immediately before it, then this extracts its value.
         Otherwise it returns null. */
-    private void registerHandlingInstruction(TypeFullName type, Token messageToken) {
+    private void registerHandlingInstruction(TypeName type, Token messageToken) {
         if (messageToken.specialToken!=null) {
             String image = messageToken.specialToken.image;
             if (HANDLING_INSTRUCTION.matcher(image).matches()) {
@@ -38,8 +48,10 @@ public class ProtoParser {
         }
     }
 
-    /* More convenient/intuitive than getContext(). Plus, if we didn't have `context` as final, then
-       BNF grammar rules could reassign `context` by mistake. */
+    /* A shortcut to ProtoParserContext.perThread(). Safe because our design requires
+       all parsing to be on the same Thread.
+       More convenient/intuitive than getContext().
+       This method call registers 'this' instance with that context, too. */
     final ProtoParserContext context = registerWithContext();
 
     private ProtoParserContext registerWithContext() {
@@ -74,7 +86,7 @@ TOKEN :
 | <EQUL_TKN: "=">
 | <SEMI_COLON_TKN: ";">
 | <COLON_TKN: ":">
-| <CONNMA_TKN: ",">
+| <COMMA_TKN: ",">
 | <DOT_TKN: ".">
 | <TO_TKN: "to">
 | <LEFTBRACE_TKN: "{">
@@ -134,9 +146,13 @@ void Input() : {
    | OptionPart()
    | PackagePart()
    | ServicePart()
-   | MessagePart(null)
-   | EnumPart(null)
-   | ExtendPart())*
+   | {if (packageName==null)
+        packageName= "";
+     }
+     ( MessagePart(null)
+       | EnumPart(null)
+       | ExtendPart())*
+     )
 }
 
 void ImportPart() : {
@@ -155,7 +171,7 @@ void ValuePart() : {
    | CStringPart()
    | NumberPart()
    | DoublePart()
-   | IndentPart()
+   | IdentPart()
    | BraceValuePart()
 }
 void BooleanPart() : {
@@ -166,15 +182,17 @@ void CStringPart() : {
 } {
     <CSTRING_TKN>
 }
-void NumberPart() : { 
+Token NumberPart() : {
+  Token t;
 } {
-    <NUMBER_TKN>
+    t=<NUMBER_TKN>
+    {return t;}
 }
 void DoublePart() : { 
 } {
     <DOUBLE_TKN>
 }
-Token IndentPart() : {
+Token IdentPart() : {
   Token t;
 } {
     t=<IDENT_TKN> {return t;}
@@ -187,12 +205,12 @@ void BraceValuePart() : {
 }
 void BraceValueOnePart() : {
 } {
-   IndentPart() <COLON_TKN> (BraceValueOneBracketPart() | ValuePart())
+   IdentPart() <COLON_TKN> (BraceValueOneBracketPart() | ValuePart())
 }
 void BraceValueOneBracketPart() : {
 } {
    <LEFTBRACKET_TKN>
-   ValuePart() (<CONNMA_TKN> ValuePart())*
+   ValuePart() (<COMMA_TKN> ValuePart())*
    <RIGHTBRACKET_TKN>
 }
 void SyntaxPart() : {
@@ -206,38 +224,70 @@ void OptionPart() : {
 
 void ClassPartNoCapture() : {
 } {
-  ClassPart(null, null)
+  ClassPart(null, null, null)
 }
 
-/** typeToken indicates what kind of 'type' (e.g. "message", "enum"...) this identifier is for. */
-TypeFullName ClassPart(Token typeToken, TypeFullName parent) : {
- TypeFullName type;
+/** @param isNewType It's for an extra validation of the intent:
+* true - if it's for defining new types ("message Abc", "enum Def"...);
+  false - if it's for defining a field only ([repeated] relative.type.path fieldName);
+  null - indicating that the rule consumer doesn't need TypeName
+* (and that it may have passed null-s as other parameters). This is complex enough, so better to be explicit.
+* @param newTypeToken indicates what kind of 'type' (e.g. "message", "enum"...) this identifier is for - if it's for defining a new
+* message/enum. Then the name defined here must not contain any dots (TypeName constructor validates that).
+  If, instead, we're defining a field (which refers to a message/enum), then newTypeToken must be null. The name may contain dots.*/
+TypeName ClassPart(Boolean isNewType, Token newTypeToken, TypeName parent) : {
+ TypeName typeName= null;
  Token t;
 } {
-  ( t=IndentPart() {type= new TypeFullName(/*typeToken*/parent, t.image);}
-  | CustomOptionsPart() {type= parent;}
+  {if (isNewType!=null && isNewType != (newTypeToken!=null))
+      throw new IllegalArgumentException("isNewType: " +isNewType+ "doesn't match the fact that newTypeToken is "
+            +(newTypeToken==null ? "null." : "non-null."));
+  }
+  ( t=IdentPart()
+    {if (isNewType!=null) {
+        typeName= isNewType
+           ? new TypeName(newTypeToken, packageName, parent, t.image)
+           : new TypeName(packageName, parent, t.image);
+       }
+     }
+  | CustomOptionsPart() {typeName= parent;}
   )
-  (<DOT_TKN> ( t=IndentPart() {type= new TypeFullName(/*typeToken, */type, t.image);}
+  (<DOT_TKN>
+    ( t=IdentPart() // dot-separated name. On every iteration, the previously captured typeName becomes the new parent:
+        {if (isNewType!=null) {
+            typeName= isNewType
+               ? new TypeName(newTypeToken, packageName, typeName, t.image)
+               : new TypeName(packageName, typeName, t.image);
+           }
+         }
        | CustomOptionsPart()
        )
   )*
-  {return type;}
+  {return typeName;}
 }
 void CustomOptionsPart() : {
 } {
    <LEFTPAREN_TKN> ClassPartNoCapture() <RIGHTPAREN_TKN>
 }
-void KeyPart() : {
+Token KeyPart() : {
+ Token t;
 } {
-   <IDENT_TKN>
-    | <MESSAGE_TKN>
-    | <PACKAGE_TKN>
-    | <SERVICE_TKN>
+   (t= <IDENT_TKN>
+    | t= <MESSAGE_TKN>
+    | t= <PACKAGE_TKN>
+    | t= <SERVICE_TKN>
+   )
+   {return t;}
 }
 
 void PackagePart() : {
+ Token t;
 } { 
-  <PACKAGE_TKN> ClassPartNoCapture() <SEMI_COLON_TKN>
+  t=<PACKAGE_TKN> ClassPartNoCapture() <SEMI_COLON_TKN> //@TODO special full name - of a package
+  {if (packageName!=null) {
+      throw new IllegalStateException("packageName has been already set to: " +packageName);
+   }
+   packageName= t.toString(); }
 }
 
 void ServicePart() : {
@@ -273,25 +323,25 @@ void RpcBracePart() : {
     <RIGHTBRACE_TKN>
 }
 
-void MessagePart(TypeFullName parent) : {
+void MessagePart(TypeName parent) : {
     Token t;
-    TypeFullName type;
+    TypeName typeName;
 } {
   t=<MESSAGE_TKN>
-  type=ClassPart(t, parent) MessageBranchePart(type)
+  typeName=ClassPart(true, t, parent) MessageBranchPart(typeName)
   {
-    ProtoParserContext.perThread().addType(type);
-    registerHandlingInstruction(type, t);
+    ProtoParserContext.perThread().addNewDefinedType(typeName);
+    registerHandlingInstruction(typeName, t);
   }
 }
-void MessageBranchePart(TypeFullName parent) : {
+void MessageBranchPart(TypeName parent) : {
 } {
    <LEFTBRACE_TKN>
-   (AttributeMemberPart()
+   (AttributeMemberPart(parent)
     |EnumPart(parent)
     |ReservedPart()
     |OneOfPart()
-    |MapPart()
+    |MapPart(parent)
     |MessagePart(parent)
     |ExtentionsPart()
     |ExtendPart()
@@ -299,15 +349,24 @@ void MessageBranchePart(TypeFullName parent) : {
     |<SEMI_COLON_TKN>)*
    <RIGHTBRACE_TKN>
 }
-void AttributeMemberPart() : {
+
+void AttributeMemberPart(TypeName parent) : {
+  boolean isRepeated= false;
 } { 
-  [AttributePart()][RepeatedPart()]
-  (MemberPart()|GroupPart())
+  [AttributePart()]
+  [RepeatedPart() {isRepeated= true;}]
+  ( MemberPart(parent)
+   |GroupPart() )
 }
-void MemberPart() : {
-} { 
-  ClassOrTypePart() KeyPart() <EQUL_TKN> NumberPart() [BracketPart()] <SEMI_COLON_TKN>
+
+void MemberPart(TypeName parent) : {
+ TypeName type;
+ Token identifier, number;
+} {
+  type=ClassOrTypePart(parent) identifier=KeyPart() <EQUL_TKN> number=NumberPart() [BracketPart()] <SEMI_COLON_TKN>
+  {throw new Error("TODO");}
 }
+
 void AttributePart() : {
 } {
     <ATTRIBUTE_TKN>
@@ -319,33 +378,39 @@ void RepeatedPart() : {
 void GroupPart() : {
 } {
   <GROUP_TKN> ClassPartNoCapture() <EQUL_TKN> NumberPart()
-  MessageBranchePart(null)
+  MessageBranchPart(null)
 }
-void ClassOrTypePart() : {
+
+TypeName ClassOrTypePart(TypeName context) : {
+ Token t= null;
+ TypeName cp;
 } {     
-  TypePart()
-  | ClassPartNoCapture()
+    t=TypePart() {return new TypeName(t); }
+    | cp=ClassPart(false, null, context) {return cp;}
 }
-void TypePart() : {
+
+Token TypePart() : {
+  Token t;
 } {
-  <TYPE_TKN>
+  t=<TYPE_TKN> {return t;}
 }
+
 void BracketPart() : {
 } {
   <LEFTBRACKET_TKN>
-  (BracketMemberPart() (<CONNMA_TKN> BracketMemberPart())*)?
+  (BracketMemberPart() (<COMMA_TKN> BracketMemberPart())*)?
   <RIGHTBRACKET_TKN>
 }
 void BracketMemberPart() : {} {
   ClassPartNoCapture() <EQUL_TKN> ValuePart()
 }
 
-void EnumPart(TypeFullName parent) : {
+void EnumPart(TypeName parent) : {
  Token t;
- TypeFullName type;
+ TypeName typeName;
 } {
   t= <ENUM_TKN>
-   type=ClassPart(t, parent)
+   typeName=ClassPart(true, t, parent)
    <LEFTBRACE_TKN>
    (EnumMemberPart())*
    <RIGHTBRACE_TKN>
@@ -367,7 +432,7 @@ void ReservedPart() : {
 }
 void DeviderPart() : {
 } {
-    <CONNMA_TKN>
+    <COMMA_TKN>
     | <TO_TKN>
 }
 
@@ -376,20 +441,21 @@ void OneOfPart() : {
   <ONEOF_TKN>
    ClassPartNoCapture()
    <LEFTBRACE_TKN>
-   (MemberPart())*
+   (MemberPart(null))*
    <RIGHTBRACE_TKN>
 }
 
-void MapPart() : {
+void MapPart(TypeName parent) : {
 } { 
 
   <MAP_TKN>
   <LESSTHAN_TKN>
-   ClassOrTypePart()
-   <CONNMA_TKN>
-   ClassOrTypePart()
+   ClassOrTypePart(parent)
+   <COMMA_TKN>
+   ClassOrTypePart(parent)
   <GRATETHAN_TKN>
   KeyPart() <EQUL_TKN> NumberPart() <SEMI_COLON_TKN>
+  {throw new Error("TODO");}
 }
 
 void ExtentionsPart() : {
@@ -399,6 +465,6 @@ void ExtentionsPart() : {
 }
 void ExtendPart() : {
 } { 
-  <EXTEND_TKN> ClassPartNoCapture() MessageBranchePart(null)
+  <EXTEND_TKN> ClassPartNoCapture() MessageBranchPart(null)
 }
 /* END */
