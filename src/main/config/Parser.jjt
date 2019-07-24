@@ -15,7 +15,7 @@ options {
     //JDK_VERSION="1.8";
 }
 
-PARSER_BEGIN(ProtoParser)
+PARSER_BEGIN(Parser)
 package protongo.parser;
 
 import java.util.ArrayList;
@@ -29,14 +29,14 @@ import protongo.compile.TypeNamePackage;
 
 /** Protobuf 3 grammar, with support for collecting limited type information. Purpose: Generate a custom schema and similar.
 */
-public class ProtoParser {
+public class Parser {
     /** Mutable - set once parsed, used when instantiating other TypeName instances. 'package' is at the top of .proto files,
     * hence this gets processed before BNF rules that need it. It's NOT per ParserContext, but per-parser (per .proto file).
     * <br/>
     * Because of this, don't use auto-generated methods ReInit(), or reset packageName to null first.
     * Then you'd have to call ParserContext.unregisterContext(), too.
     * */
-    private TypeNamePackage packageName= new TypeNamePackage(Token.newToken(ProtoParserConstants.PACKAGE_TKN), "");
+    private TypeNamePackage packageName= new TypeNamePackage(Token.newToken(ParserConstants.PACKAGE_TKN), "");
 
     /*When you want to generate a schema for a given "message," add a special (single-line) comment immediately before
     that "message." See handlingInstruction(Token) and how it's used.
@@ -67,14 +67,14 @@ public class ProtoParser {
     private static final ThreadLocal<Boolean> alreadyParsing= new ThreadLocal<Boolean>();
     {
         if( alreadyParsing.get()!=null ) {
-            throw new IllegalStateException("Use one ProtoParser instance per Thread. Call waitUntilComplete() before creating a new instance in the same Thread.");
+            throw new IllegalStateException("Use one Parser instance per Thread. Call waitUntilComplete() before creating a new instance in the same Thread.");
         }
     }
     /*private final int registerAsParsing= new Object() {
     }.hashCode();*/
 }
 
-PARSER_END(ProtoParser)
+PARSER_END(Parser)
 
 SKIP :
 {

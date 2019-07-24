@@ -2,7 +2,7 @@ package protongo.compile;
 
 import java.util.Arrays;
 import java.util.List;
-import protongo.parser.ProtoParserConstants;
+import protongo.parser.ParserConstants;
 import protongo.parser.Token;
 
 /** This represents a Message, sub-sub...Message, an Enum... */
@@ -19,7 +19,7 @@ public abstract class TypeName {
     private final int newTypeTokenKind;
 
     private static List<Integer> ACCEPTABLE_TOP_LEVEL_TOKEN_KINDS= Arrays.asList( new Integer[] {
-            ProtoParserConstants.MESSAGE_TKN, ProtoParserConstants.ENUM_TKN, ProtoParserConstants.PACKAGE_TKN
+            ParserConstants.MESSAGE_TKN, ParserConstants.ENUM_TKN, ParserConstants.PACKAGE_TKN
     });
     /*
           @TODO Run against .proto, then remove this comment line: It may be null for usages that we're not interested in (for example other usages of ClassPart BNF rule). */

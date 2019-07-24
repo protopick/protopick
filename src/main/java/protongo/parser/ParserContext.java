@@ -33,7 +33,7 @@ public final class ParserContext {
 
     // We parse each included file in a separate thread. That way waiting for files blocks as little as
     // possible. That includes the very first (start) file, even if it's just one. That's consistent.
-    // Otherwise we'd have to clear ProtoParser.alreadyParsing for the starter thread (in case the
+    // Otherwise we'd have to clear Parser.alreadyParsing for the starter thread (in case the
     // client starts another cycle from the same Thread).
     private final List<Thread> threads = new ArrayList<Thread>();
 
@@ -49,7 +49,7 @@ public final class ParserContext {
             Thread thread = new Thread(new Runnable() {
                 public void run() {
                     // We must instantiate a new parser in a new thread
-                    ProtoParser parser = new ProtoParser( loadFile(filePath) );
+                    Parser parser = new Parser( loadFile(filePath) );
                     parser.registerWithContext(ParserContext.this);
                     try {
                         parser.Input();
@@ -105,9 +105,9 @@ public final class ParserContext {
     //public final Map<TypeName, HandlingInstruction> instructions= new HashMap<>();
 
     /*
-    public final List<ProtoParser> parsers = new ArrayList<>();
+    public final List<Parser> parsers = new ArrayList<>();
 
-    public void register (ProtoParser parser) {
+    public void register (Parser parser) {
         if (parsers.contains(parser)) {
             throw new IllegalStateException("Parser already registered.");
         }

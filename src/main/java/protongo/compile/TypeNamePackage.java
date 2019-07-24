@@ -1,6 +1,6 @@
 package protongo.compile;
 
-import protongo.parser.ProtoParserConstants;
+import protongo.parser.ParserConstants;
 import protongo.parser.Token;
 
 public final class TypeNamePackage extends TypeName {
@@ -9,7 +9,7 @@ public final class TypeNamePackage extends TypeName {
      */
     public TypeNamePackage (Token packageToken, String givenPackageName) {
         super (TypeNameUse.PACKAGE, packageToken, null, null, givenPackageName);
-        if (packageToken.kind!= ProtoParserConstants.PACKAGE_TKN)
+        if (packageToken.kind!= ParserConstants.PACKAGE_TKN)
             throw new IllegalArgumentException("Use only for 'package' headings.");
     }
 }

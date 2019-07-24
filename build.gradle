@@ -13,7 +13,7 @@ javacc {
     // configuration container for all javacc configurations
     configs {
         template {
-            inputFile = file('src/main/config/ProtoParser.jjt')
+            inputFile = file('src/main/config/Parser.jjt')
             packageName = 'protongo'
             lookahead = '2'
             forceLaCheck = true

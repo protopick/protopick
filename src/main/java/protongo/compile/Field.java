@@ -1,14 +1,14 @@
 package protongo.compile;
 
-import protongo.parser.ProtoParserConstants;
+import protongo.parser.ParserConstants;
 import protongo.parser.Token;
 
 public class Field {
     public static enum Attribute { REQUIRED, OPTIONAL }
     public static Attribute attributeFrom(Token t) {
         switch (t.kind) {
-            case ProtoParserConstants.REQUIRED_TKN: return Attribute.REQUIRED;
-            case ProtoParserConstants.OPTIONAL_TKN: return Attribute.OPTIONAL;
+            case ParserConstants.REQUIRED_TKN: return Attribute.REQUIRED;
+            case ParserConstants.OPTIONAL_TKN: return Attribute.OPTIONAL;
             default: throw new IllegalArgumentException("Expecting 'required' or 'optional'.");
         }
     }

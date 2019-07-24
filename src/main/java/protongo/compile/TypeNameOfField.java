@@ -1,6 +1,6 @@
 package protongo.compile;
 
-import protongo.parser.ProtoParserConstants;
+import protongo.parser.ParserConstants;
 import protongo.parser.Token;
 
 /** Indicate a type that a field definition refers to. Not for defining new types/enums. */
@@ -19,7 +19,7 @@ public final class TypeNameOfField extends TypeName {
      * @param simpleType Token of the built-in Protobuf type. NOT the same meaning as newTypeToken in the other constructors. */
     public TypeNameOfField (Token simpleType) {
         super (TypeNameUse.FIELD_PRIMITIVE, null, null, null, simpleType.image);
-        if (simpleType.kind!=ProtoParserConstants.TYPE_TKN)
+        if (simpleType.kind!=ParserConstants.TYPE_TKN)
             throw new IllegalArgumentException("Must pass a built-in type, not: " +simpleType);
     }
 
@@ -37,7 +37,7 @@ public final class TypeNameOfField extends TypeName {
        then the user can work around by adding a package prefix to #2 (effectively making it another #1).
        <br/>
        While parsing, even if that other type is in the same file, we don't want to start parsing it right now.
-       We've either already parsed it, or we will parse it later, in this same ProtoParser instance.
+       We've either already parsed it, or we will parse it later, in this same Parser instance.
        Hence, BNF rules don't resolve, they only register Type instances with ParserContext. We call this resolveFieldType() only later, once all BNF rules were processed.
        (Also, the same package may be across multiple files => involving multiple parsers...)
        <br/>
