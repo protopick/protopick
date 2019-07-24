@@ -7,11 +7,11 @@ import java.util.HashSet;
  *  Any one type is defined in the same file, hence the same Thread. Therefore no need to synchronize.
 */
 public final class TypeDefinition {
-    public final TypeNameDefinition definitionType;
+    public final TypeNameDefinition typeNameDefinition;
     public boolean isEnum;
     public final Set<Field> fields= new HashSet<>();
 
-    public TypeDefinition(TypeNameDefinition givenDefinitionType) {
-        definitionType= givenDefinitionType;
+    public TypeDefinition(TypeNameDefinition givenTypeNameDefinition) {
+        typeNameDefinition= givenTypeNameDefinition;
     }
 }

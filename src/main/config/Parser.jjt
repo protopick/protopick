@@ -365,17 +365,17 @@ void MessagePart(TypeNameDefinition parent) : {
   { TypeDefinition type= context.addNewDefinition( typeName );
     //registerHandlingInstruction(typeName, t);
   }
-  MessageBranchPart( typeName )
+  MessageBranchPart( type )
 }
-void MessageBranchPart(TypeNameDefinition typeDefinition) : {
+void MessageBranchPart(TypeDefinition typeDefinition) : {
 } {
    <LEFTBRACE_TKN>
    (AttributeMemberPart(typeDefinition)
-    |EnumPart(typeDefinition)
+    |EnumPart(typeDefinition.typeNameDefinition)
     |ReservedPart()
-    |OneOfPart(typeDefinition)
-    |MapPart(typeDefinition)
-    |MessagePart(typeDefinition)
+    |OneOfPart(typeDefinition.typeNameDefinition)
+    |MapPart(typeDefinition.typeNameDefinition)
+    |MessagePart(typeDefinition.typeNameDefinition)
     |ExtentionsPart()
     |ExtendPart()
     |OptionPart()
@@ -383,9 +383,8 @@ void MessageBranchPart(TypeNameDefinition typeDefinition) : {
    <RIGHTBRACE_TKN>
 }
 
-void AttributeMemberPart(TypeNameDefinition context) : {
-  Field field= new Field();
-  field.definitionType= context;
+void AttributeMemberPart(TypeDefinition typeDefinition) : {
+  Field field= new Field(typeDefinition.typeNameDefinition);
   Token attribute;
 } { 
   [ attribute=AttributePart() {field.attribute= Field.attributeFrom(attribute);} ]
@@ -398,7 +397,8 @@ void MemberPart(/*boolean isOneOf,*/Field field) : {
  TypeNameOfField type;
  Token name, number;
 } {
-  field.fieldType=ClassOrTypePart(field.definitionType) name=KeyPart() <EQUL_TKN> number=NumberPart() [BracketPart()] <SEMI_COLON_TKN>
+  field.typeNameOfField=ClassOrTypePart(field.typeNameDefinition)
+  name=KeyPart() <EQUL_TKN> number=NumberPart() [BracketPart()] <SEMI_COLON_TKN>
   { field.name= name.image;
     throw new Error("TODO register field");}
 }
@@ -449,7 +449,8 @@ void EnumPart(TypeNameDefinition parent) : {
 } {
   t= <ENUM_TKN>
    typeName=ClassPartDefinition(t, parent)
-   { context.addNewDefinition( typeName );
+   { TypeDefinition type= context.addNewDefinition( typeName );
+     type.isEnum= true;
      throw new Error("TODO");
    }
    <LEFTBRACE_TKN>
@@ -477,8 +478,7 @@ void DeviderPart() : {
 }
 
 void OneOfPart(TypeNameDefinition context) : {
-  Field field= new Field();
-  field.definitionType= context;
+  Field field= new Field(context);
 } {
   <ONEOF_TKN>
    ClassPartNoCapture() //From the specification this name seems almost unused
