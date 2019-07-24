@@ -38,7 +38,7 @@ public final class TypeNameOfField extends TypeName {
        <br/>
        While parsing, even if that other type is in the same file, we don't want to start parsing it right now.
        We've either already parsed it, or we will parse it later, in this same Parser instance.
-       Hence, BNF rules don't resolve, they only register Type instances with ParserContext. We call this resolveFieldType() only later, once all BNF rules were processed.
+       Hence, BNF rules don't resolve, they only register TypeNameOfField instances with ParserContext. We call this resolveFieldType() only later, once all BNF rules were processed.
        (Also, the same package may be across multiple files => involving multiple parsers...)
        <br/>
        Do NOT use until the whole input gets parsed. Otherwise this can't identify "relative" (sub-message) names.

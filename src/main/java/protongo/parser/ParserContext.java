@@ -11,7 +11,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import protongo.compile.Type;
 import protongo.compile.TypeNameDefinition;
 
 /** Load parser(s) for included file(s).
@@ -22,7 +21,7 @@ public final class ParserContext {
     private final Map<String, TypeNameDefinition> newTypeNamesMutable = new HashMap<>();
 
     /**"New types" mean type names used not for fields, but for types defined by the user ("message", "enum").
-     * Full type name (including protobuf package, if any) -> Type. We add them in by addType(TypeName) as we parse. */
+     * Full type name (including protobuf package, if any) -> TypeDefinition. We add them in by addNewDefinedType(TypeName) as we parse. */
     public final Map<String, TypeNameDefinition> newTypeNames = Collections.unmodifiableMap(newTypeNamesMutable);
 
     public void addNewDefinedType( TypeNameDefinition type ) {
