@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import protongo.compile.Type;
 import protongo.compile.TypeNameDefinition;
 
 /** Load parser(s) for included file(s).

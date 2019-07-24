@@ -15,6 +15,8 @@ public class Field {
 
     public Attribute attribute;
     public boolean repeated;
+    // This is also accessible through (TypeDefinition instance).definitionType. However, having it here means
+    // that we don't have to pass a definition/context type in Parser.jjt as much, hence simpler.
     public TypeNameDefinition definitionType;
     public TypeNameOfField fieldType;
     public String name;
