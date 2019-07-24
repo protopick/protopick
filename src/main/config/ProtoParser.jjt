@@ -21,7 +21,10 @@ package protongo.parser;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
+import protongo.compile.Field;
 import protongo.compile.TypeName;
+import protongo.compile.TypeNameOfField;
+import protongo.compile.TypeNameDefinition;
 
 /** Protobuf 3 grammar, with support for collecting limited type information. Purpose: Generate a custom schema and similar.
 */
@@ -245,35 +248,53 @@ void ClassPartNoCapture() : {
 * @param newTypeToken indicates what kind of 'type' (e.g. "message", "enum"...) this identifier is for - if it's for defining a new
 * message/enum. Then the name defined here must not contain any dots (TypeName constructor validates that).
   If, instead, we're defining a field (which refers to a message/enum), then newTypeToken must be null. The name may contain dots.*/
-TypeName ClassPart(Boolean isNewType, Token newTypeToken, TypeName parent) : {
- TypeName typeName= null;
- Token t;
+TypeName ClassPart(Boolean isNewType, Token newTypeToken, TypeNameDefinition parentOrContext) : {
+    Token t;
+    TypeNameDefinition typeNameDefinition= null; // Used only for new  types (not for fields).
+    String fieldFullName= ""; // Used only for fields (not for new types), and only if it's dot-separated
 } {
   {if (isNewType!=null && isNewType != (newTypeToken!=null))
       throw new IllegalArgumentException("isNewType: " +isNewType+ "doesn't match the fact that newTypeToken is "
             +(newTypeToken==null ? "null." : "non-null."));
   }
   ( t=IdentPart()
-    {if (isNewType!=null) {
-        typeName= isNewType
-           ? new TypeName(newTypeToken, packageName, parent, t.image)
-           : new TypeName(packageName, parent, t.image);
-       }
-     }
-  | CustomOptionsPart() {typeName= parent;}
+    {   fieldFullName= t.image;
+        if (isNewType==Boolean.TRUE)
+            typeNameDefinition= new TypeNameDefinition(newTypeToken, packageName, parentOrContext, t.image);
+    }
+  | CustomOptionsPart()
   )
   (<DOT_TKN>
-    ( t=IdentPart() // dot-separated name. On every iteration, the previously captured typeName becomes the new parent:
-        {if (isNewType!=null) {
-            typeName= isNewType
-               ? new TypeName(newTypeToken, packageName, typeName, t.image)
-               : new TypeName(packageName, typeName, t.image);
-           }
-         }
+    ( t=IdentPart()
+        {   if (isNewType!=null) {
+                fieldFullName+= '.' +t.image;
+                if (isNewType)
+                    // Composing a dot-separated name. On every iteration, the previously captured typeName becomes the new parent.
+                    typeNameDefinition= new TypeNameDefinition(newTypeToken, packageName, typeNameDefinition, t.image);
+                }
+        }
        | CustomOptionsPart()
        )
   )*
-  {return typeName;}
+  {   if (isNewType!=null) {
+          if (isNewType) {
+              if (!typeNameDefinition.fullName().endsWith(fieldFullName))
+                  throw new IllegalStateException( typeNameDefinition.fullName()+ " should end with " +fieldFullName );
+              return typeNameDefinition;
+          }
+          // The field reference type has context = parentOrContext. It doesn't have any dot-separated tokens added.
+          return new TypeNameOfField(packageName, parentOrContext, fieldFullName);
+      }
+      return null;
+  }
+}
+
+/** A type-safe shortcut. It helps to keep the code cleaner. */
+TypeNameDefinition ClassPartDefinition(Token newTypeToken, TypeNameDefinition parent) : {
+    TypeName result;
+} {
+    result= ClassPart( true, newTypeToken, parent )
+    { return (TypeNameDefinition)result; }
 }
 
 void CustomOptionsPart() : {
@@ -294,7 +315,7 @@ Token KeyPart() : {
 void PackagePart() : {
  Token t;
 } { 
-  t=<PACKAGE_TKN> ClassPartNoCapture() <SEMI_COLON_TKN> //@TODO special full name - of a package
+  t=<PACKAGE_TKN> ClassPartNoCapture() <SEMI_COLON_TKN> //@TODO
   {if (packageName!=null) {
       throw new IllegalStateException("packageName has been already set to: " +packageName);
    }
@@ -334,26 +355,26 @@ void RpcBracePart() : {
     <RIGHTBRACE_TKN>
 }
 
-void MessagePart(TypeName parent) : {
+void MessagePart(TypeNameDefinition parent) : {
     Token t;
-    TypeName typeName;
+    TypeNameDefinition typeName;
 } {
   t=<MESSAGE_TKN>
-  typeName=ClassPart(true, t, parent) MessageBranchPart(typeName)
-  {
-    context.addNewDefinedType(typeName);
+  typeName=ClassPartDefinition(t, parent)
+  MessageBranchPart( typeName )
+  { context.addNewDefinedType( typeName );
     //registerHandlingInstruction(typeName, t);
   }
 }
-void MessageBranchPart(TypeName parent) : {
+void MessageBranchPart(TypeNameDefinition typeDefinition) : {
 } {
    <LEFTBRACE_TKN>
-   (AttributeMemberPart(parent)
-    |EnumPart(parent)
+   (AttributeMemberPart(typeDefinition)
+    |EnumPart(typeDefinition)
     |ReservedPart()
     |OneOfPart()
-    |MapPart(parent)
-    |MessagePart(parent)
+    |MapPart(typeDefinition)
+    |MessagePart(typeDefinition)
     |ExtentionsPart()
     |ExtendPart()
     |OptionPart()
@@ -361,20 +382,20 @@ void MessageBranchPart(TypeName parent) : {
    <RIGHTBRACE_TKN>
 }
 
-void AttributeMemberPart(TypeName parent) : {
+void AttributeMemberPart(TypeNameDefinition context) : {
   boolean isRepeated= false;
 } { 
   [AttributePart()]
   [RepeatedPart() {isRepeated= true;}]
-  ( MemberPart(parent)
+  ( MemberPart(context)
    |GroupPart() )
 }
 
-void MemberPart(TypeName parent) : {
- TypeName type;
+void MemberPart(TypeNameDefinition context) : {
+ TypeNameOfField type;
  Token identifier, number;
 } {
-  type=ClassOrTypePart(parent) identifier=KeyPart() <EQUL_TKN> number=NumberPart() [BracketPart()] <SEMI_COLON_TKN>
+  type=ClassOrTypePart(context) identifier=KeyPart() <EQUL_TKN> number=NumberPart() [BracketPart()] <SEMI_COLON_TKN>
   {throw new Error("TODO");}
 }
 
@@ -392,12 +413,12 @@ void GroupPart() : {
   MessageBranchPart(null)
 }
 
-TypeName ClassOrTypePart(TypeName context) : {
+TypeNameOfField ClassOrTypePart(TypeNameDefinition context) : {
  Token t= null;
  TypeName cp;
 } {     
-    t=TypePart() {return new TypeName(t); }
-    | cp=ClassPart(false, null, context) {return cp;}
+    t=TypePart() {return new TypeNameOfField(t); }
+    | cp=ClassPart(false, null, context) {return (TypeNameOfField)cp;}
 }
 
 Token TypePart() : {
@@ -416,12 +437,12 @@ void BracketMemberPart() : {} {
   ClassPartNoCapture() <EQUL_TKN> ValuePart()
 }
 
-void EnumPart(TypeName parent) : {
+void EnumPart(TypeNameDefinition parent) : {
  Token t;
- TypeName typeName;
+ TypeNameDefinition typeName;
 } {
   t= <ENUM_TKN>
-   typeName=ClassPart(true, t, parent)
+   typeName=ClassPartDefinition(t, parent)
    <LEFTBRACE_TKN>
    (EnumMemberPart())*
    <RIGHTBRACE_TKN>
@@ -456,14 +477,14 @@ void OneOfPart() : {
    <RIGHTBRACE_TKN>
 }
 
-void MapPart(TypeName parent) : {
-} { 
+void MapPart(TypeNameDefinition context) : {
+} {
 
   <MAP_TKN>
   <LESSTHAN_TKN>
-   ClassOrTypePart(parent)
+   ClassOrTypePart(context)
    <COMMA_TKN>
-   ClassOrTypePart(parent)
+   ClassOrTypePart(context)
   <GRATETHAN_TKN>
   KeyPart() <EQUL_TKN> NumberPart() <SEMI_COLON_TKN>
   {throw new Error("TODO");}

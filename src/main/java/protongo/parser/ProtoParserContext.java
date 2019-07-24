@@ -12,26 +12,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import protongo.compile.TypeName;
-//import protongo.compile.TypeRelativeName;
+import protongo.compile.TypeNameDefinition;
 
 /** Load parser(s) for included file(s).
  * This is not memory efficient. That's not the goal. */
 public final class ProtoParserContext {
     public final List<String> importPaths= new ArrayList<>();
 
-    private final Map<String, TypeName> newTypesMutable= new HashMap<>();
+    private final Map<String, TypeNameDefinition> newTypesMutable= new HashMap<>();
 
     /**"New types" mean type names used not for fields, but for types defined by the user ("message", "enum").
      * Full type name (including protobuf package, if any) -> Type. We add them in by addType(TypeName) as we parse. */
-    public final Map<String, TypeName> newTypes= Collections.unmodifiableMap(newTypesMutable);
+    public final Map<String, TypeNameDefinition> newTypes= Collections.unmodifiableMap(newTypesMutable);
 
-    public void addNewDefinedType( TypeName type ) {
-        final String name = type.fullName();
-        if (!type.use.definesNewType())
-            throw new IllegalArgumentException("Don't add identifiers that define new fields: " +name+ ". Only add those that define new types.");
-        if (newTypesMutable.containsKey(name))
-            throw new IllegalArgumentException("Type with name " +name+ " has been registered already.");
-        newTypesMutable.put(name, type);
+    public void addNewDefinedType( TypeNameDefinition type ) {
+        final String fullName = type.fullName();
+        if (newTypesMutable.containsKey(fullName))
+            throw new IllegalArgumentException("Type with name " +fullName+ " has been registered already.");
+        newTypesMutable.put(fullName, type);
     }
 
     // We parse each included file in a separate thread. That way waiting for files blocks as little as
