@@ -191,7 +191,8 @@ void BooleanPart() : {
 String CStringPart() : {
   Token t;
 } {
-    t=<CSTRING_TKN> {return t.image.substring(1, t.image.length()); }
+    t=<CSTRING_TKN>
+    {return t.image.substring(1, t.image.length()); /*The same string, but without the enclosing quotes. */ }
 }
 Token NumberPart() : {
   Token t;
@@ -373,8 +374,8 @@ void MessageBranchPart(TypeDefinition typeDefinition) : {
    (AttributeMemberPart(typeDefinition)
     |EnumPart(typeDefinition.typeNameDefinition)
     |ReservedPart()
-    |OneOfPart(typeDefinition.typeNameDefinition)
-    |MapPart(typeDefinition.typeNameDefinition)
+    |OneOfPart(typeDefinition)
+    |MapPart(typeDefinition)
     |MessagePart(typeDefinition.typeNameDefinition)
     |ExtentionsPart()
     |ExtendPart()
@@ -384,23 +385,23 @@ void MessageBranchPart(TypeDefinition typeDefinition) : {
 }
 
 void AttributeMemberPart(TypeDefinition typeDefinition) : {
-  Field field= new Field(typeDefinition.typeNameDefinition);
+  Field field= new Field(typeDefinition);
   Token attribute;
 } { 
   [ attribute=AttributePart() {field.attribute= Field.attributeFrom(attribute);} ]
-  [RepeatedPart() {field.repeated= true;}]
+  [RepeatedPart() {field.isRepeated= true;}]
   ( MemberPart(field)
-   |GroupPart() )
+   |GroupPart() {throw new Error("GroupPart is not supported.");})
 }
 
 void MemberPart(/*boolean isOneOf,*/Field field) : {
  TypeNameOfField type;
  Token name, number;
 } {
-  field.typeNameOfField=ClassOrTypePart(field.typeNameDefinition)
+  field.typeNameOfField= ClassOrTypePart( field.typeDefinition.typeNameDefinition )
   name=KeyPart() <EQUL_TKN> number=NumberPart() [BracketPart()] <SEMI_COLON_TKN>
   { field.name= name.image;
-    throw new Error("TODO register field");}
+  }
 }
 
 Token AttributePart() : {
@@ -445,22 +446,25 @@ void BracketMemberPart() : {} {
 
 void EnumPart(TypeNameDefinition parent) : {
  Token t;
- TypeNameDefinition typeName;
+ TypeNameDefinition typeNameDefinition;
 } {
-  t= <ENUM_TKN>
-   typeName=ClassPartDefinition(t, parent)
-   { TypeDefinition type= context.addNewDefinition( typeName );
-     type.isEnum= true;
-     throw new Error("TODO");
+   t= <ENUM_TKN>
+   typeNameDefinition= ClassPartDefinition(t, parent)
+   { TypeDefinition typeDefinition= context.addNewDefinition( typeNameDefinition );
+     typeDefinition.isEnum= true;
    }
    <LEFTBRACE_TKN>
-   (EnumMemberPart())*
+   {Field field= new Field(typeDefinition);
+   }
+   (EnumMemberPart(field))*
    <RIGHTBRACE_TKN>
 }
-void EnumMemberPart() : {
-} { 
-  [EnumOptionMemberPart()]
-  ClassPartNoCapture() <EQUL_TKN> ValuePart() [BracketPart()] <SEMI_COLON_TKN>
+void EnumMemberPart(Field field) : {
+  TypeNameOfField typeNameOfField;
+} {
+  [EnumOptionMemberPart() {throw new Error("Enum options are not supported.");}]
+  typeNameOfField= /*TODO replace with IdentPart*/ClassOrTypePart( field.typeDefinition.typeNameDefinition )
+  <EQUL_TKN> ValuePart() [BracketPart()] <SEMI_COLON_TKN>
 }
 void EnumOptionMemberPart() : {
 } { 
@@ -477,8 +481,9 @@ void DeviderPart() : {
     | <TO_TKN>
 }
 
-void OneOfPart(TypeNameDefinition context) : {
-  Field field= new Field(context);
+void OneOfPart(TypeDefinition typeDefinition) : {
+  Field field= new Field(typeDefinition);
+  // @TODO unsupported
 } {
   <ONEOF_TKN>
    ClassPartNoCapture() //From the specification this name seems almost unused
@@ -487,17 +492,20 @@ void OneOfPart(TypeNameDefinition context) : {
    <RIGHTBRACE_TKN>
 }
 
-void MapPart(TypeNameDefinition context) : {
+void MapPart(TypeDefinition typeDefinition) : {
+  Token name;
+  Field field= new Field(typeDefinition);
+  field.isMap= true;
 } {
 
   <MAP_TKN>
   <LESSTHAN_TKN>
-   ClassOrTypePart(context)
+   field.typeNameOfField= ClassOrTypePart(typeDefinition.typeNameDefinition)
    <COMMA_TKN>
-   ClassOrTypePart(context)
+   field.typeNameOfMapValues= ClassOrTypePart(typeDefinition.typeNameDefinition)
   <GRATETHAN_TKN>
-  KeyPart() <EQUL_TKN> NumberPart() <SEMI_COLON_TKN>
-  {throw new Error("TODO");}
+  name= KeyPart() <EQUL_TKN> NumberPart() <SEMI_COLON_TKN>
+  {field.name= name.image;}
 }
 
 void ExtentionsPart() : {

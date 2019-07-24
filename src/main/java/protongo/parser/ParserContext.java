@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -16,6 +17,7 @@ import protongo.compile.TypeNameDefinition;
 /** Load parser(s) for included file(s).
  * This is not memory efficient. That's not the goal. */
 public final class ParserContext {
+    // No need to synchronize, as it's set at the beginning only
     public final List<String> importPaths= new ArrayList<>();
 
     /**"New types" mean type names used not for fields, but for types defined by the user ("message", "enum").
@@ -23,7 +25,7 @@ public final class ParserContext {
      * <br/>Do SYNCHRONIZE any access by running within synchronized(newTypes) {...}.
      * */
     // We only keep a mutable map. Having a non-mutable view meant we'd need to synchronize on one of them only (or to synchronize on the whole ParserContext instance, which is not that granular).
-    public final Map<String, TypeDefinition> newTypes = new HashMap<>();
+    public final Map<String, TypeDefinition> newTypes = Collections.synchronizedMap( new HashMap<>() );
 
     /** Create a new TypeDefinition instance for the given name. Register it with the context, and return. */
     public TypeDefinition addNewDefinition( TypeNameDefinition typeName ) {
@@ -41,41 +43,44 @@ public final class ParserContext {
     // possible. That includes the very first (start) file, even if it's just one. That's consistent.
     // Otherwise we'd have to clear Parser.alreadyParsing for the starter thread (in case the
     // client starts another cycle from the same Thread).
-    private final List<Thread> threads = new ArrayList<Thread>();
+    private final List<Thread> threads = Collections.synchronizedList( new ArrayList<Thread>() );
 
     /** Names of files that have been, or are being, processed. That prevents us from processing the
      * same file multiple times (if it's included from several files). That robust enough, because if the same file
      * is reachable through multiple paths (as in includePaths), that's incorrect (as per protoc 3.7.0). */
-    private final Set<String> loadedFileNames= new HashSet<>();
+    private final Set<String> loadedFileNames= Collections.synchronizedSet( new HashSet<>() );
 
-    public synchronized void parse (String filePath) {
-        if (!loadedFileNames.contains(filePath)) {
-            loadedFileNames.add(filePath);
+    public void parse (String filePath) {
+        synchronized (loadedFileNames) {
+            if (!loadedFileNames.contains(filePath)) {
+                loadedFileNames.add(filePath);
 
-            Thread thread = new Thread(new Runnable() {
-                public void run() {
-                    // We must instantiate a new parser in a new thread
-                    Parser parser = new Parser( loadFile(filePath) );
-                    parser.registerWithContext(ParserContext.this);
-                    try {
-                        parser.Input();
-                    } catch (ParseException e) {
-                        throw new RuntimeException(e);
+                Thread thread = new Thread(new Runnable() {
+                    public void run() {
+                        // We must instantiate a new parser in a new thread
+                        Parser parser = new Parser(loadFile(filePath));
+                        parser.registerWithContext(ParserContext.this);
+                        try {
+                            parser.Input();
+                        } catch (ParseException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
-                }
-            });
-            thread.start();
-            threads.add(thread);
+                });
+                thread.start();
+                threads.add(thread);
+            }
         }
     }
 
-    public synchronized void waitUntilComplete() {
-        for( Thread thread: threads) {
-            try {
-                thread.join();
-            }
-            catch (InterruptedException e) {
-                throw new RuntimeException(e);
+    public void waitUntilComplete() {
+        synchronized (threads) {
+            for (Thread thread : threads) {
+                try {
+                    thread.join();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
     }

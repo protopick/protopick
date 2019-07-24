@@ -14,16 +14,28 @@ public class Field {
     }
 
     public Attribute attribute;
-    public boolean repeated;
-    // This is also accessible through (TypeDefinition instance).typeNameDefinition. However, having it here means
-    // that we don't have to pass a definition/context type in Parser.jjt as much, hence simpler.
-    public TypeNameDefinition typeNameDefinition;
+    public boolean isRepeated;
+    public boolean isMap;
+
+    /** This is redundant but worthwhile. The client code usually has TypeDefinition instance already. However, having it here means
+    that we don't have to pass a definition/context type in Parser.jjt as much, hence simpler. */
+    public final TypeDefinition typeDefinition;
+
+    /** For non-map fields, this is the type of the field (its value). For map fields, this is the type of the keys. */
     public TypeNameOfField typeNameOfField;
+    /** Used only if .isMap is true. For key type use typeNameOfField. */
+    public TypeNameOfField typeNameOfMapValues;
+
+    /** If not set, then use nameToken. */
     public String name;
 
-    public Field() {}
+    /** If */
+    public Token token;
 
-    public Field (TypeNameDefinition givenTypeNameDefinition) {
-        typeNameDefinition= givenTypeNameDefinition;
+    /** Link the new field and givenTypeDefinition both ways: 1. set this.typeDefinition,
+     * 2. add this field to givenTypeDefinition.fields. */
+    public Field (TypeDefinition givenTypeDefinition) {
+        typeDefinition= givenTypeDefinition;
+        typeDefinition.fields.add (this);
     }
 }
