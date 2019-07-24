@@ -5,26 +5,26 @@
 
 options {
     /* Must not be STATIC, because the parser creates and runs extra parsers, one per "import" clause.
+       Furthermore, each parser uses its own Thread.
     * For description of options see https://github.com/IntershopCommunicationsAG/javacc-gradle-plugin.
     * */
     STATIC=false;
     SANITY_CHECK=true;
     DEBUG_PARSER=false;
     DEBUG_TOKEN_MANAGER=false;
+    //JDK_VERSION="1.8";
 }
 
 PARSER_BEGIN(ProtoParser)
 package protongo.parser;
 
-import protongo.compile.TypeName;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Pattern;
+import protongo.compile.TypeName;
 
-/** Protobuf 3 grammar, with support for collecting limited type information. Purpose: Generate a custom schema.
-    When you want to generate a schema for a given "message," add a special (single-line) comment immediately before
-    that "message." See handlingInstruction(Token) and how it's used.
-
-    Before you instantiate `new ProtoParser(streamOrOther)`, first create a `new ProtoParserContext()`
-    in the same thread. */
+/** Protobuf 3 grammar, with support for collecting limited type information. Purpose: Generate a custom schema and similar.
+*/
 public class ProtoParser {
     /** Mutable - set once parsed, used when instantiating other TypeName instances. 'package' is at the top of .proto files,
     * hence this gets processed before BNF rules that need it. It's NOT per ProtoParserContext, but per-parser (per .proto file).
@@ -34,10 +34,12 @@ public class ProtoParser {
     * */
     private String packageName;
 
+    /*When you want to generate a schema for a given "message," add a special (single-line) comment immediately before
+    that "message." See handlingInstruction(Token) and how it's used.
     private static final Pattern HANDLING_INSTRUCTION= Pattern.compile("GENERATE *DB *SCHEMA");
 
     /** If the given messageToken has a special comment immediately before it, then this extracts its value.
-        Otherwise it returns null. */
+        Otherwise it returns null.
     private void registerHandlingInstruction(TypeName type, Token messageToken) {
         if (messageToken.specialToken!=null) {
             String image = messageToken.specialToken.image;
@@ -46,22 +48,26 @@ public class ProtoParser {
                 context.instructions.put (type, instruction);
             }
         }
-    }
+    }*/
 
-    /* A shortcut to ProtoParserContext.perThread(). Safe because our design requires
-       all parsing to be on the same Thread.
-       More convenient/intuitive than getContext().
-       This method call registers 'this' instance with that context, too. */
-    final ProtoParserContext context = registerWithContext();
+    private ProtoParserContext context;
 
-    private ProtoParserContext registerWithContext() {
-        // When this method is called, `this` instance if not complete yet. That's OK.
+    public void registerWithContext (ProtoParserContext givenContext) {
         if (context!=null) {
             throw new IllegalStateException("Parser already has its context set.");
         }
-        ProtoParserContext.register (this);
-        return ProtoParserContext.perThread();
+        context= givenContext;
     }
+
+    // Beware: JavaCC 7.0.4 doesn't support Java 7 "diamond operator": new ThreadLocal<>()
+    private static final ThreadLocal<Boolean> alreadyParsing= new ThreadLocal<Boolean>();
+    {
+        if( alreadyParsing.get()!=null ) {
+            throw new IllegalStateException("Use one ProtoParser instance per Thread. Call waitUntilComplete() before creating a new instance in the same Thread.");
+        }
+    }
+    /*private final int registerAsParsing= new Object() {
+    }.hashCode();*/
 }
 
 PARSER_END(ProtoParser)
@@ -156,8 +162,11 @@ void Input() : {
 }
 
 void ImportPart() : {
-} { 
-  <IMPORT_TKN> [PublicPart()] CStringPart() <SEMI_COLON_TKN>
+  String filePath;
+} {
+  <IMPORT_TKN> [PublicPart()] filePath=CStringPart() <SEMI_COLON_TKN>
+  { context.parse (filePath);
+  }
 }
 
 void PublicPart() : {
@@ -178,9 +187,10 @@ void BooleanPart() : {
 } {
     <BOOLEAN_TKN> /* { code...}*/
 }
-void CStringPart() : { 
+String CStringPart() : {
+  Token t;
 } {
-    <CSTRING_TKN>
+    t=<CSTRING_TKN> {return t.image.substring(1, t.image.length()); }
 }
 Token NumberPart() : {
   Token t;
@@ -265,6 +275,7 @@ TypeName ClassPart(Boolean isNewType, Token newTypeToken, TypeName parent) : {
   )*
   {return typeName;}
 }
+
 void CustomOptionsPart() : {
 } {
    <LEFTPAREN_TKN> ClassPartNoCapture() <RIGHTPAREN_TKN>
@@ -330,8 +341,8 @@ void MessagePart(TypeName parent) : {
   t=<MESSAGE_TKN>
   typeName=ClassPart(true, t, parent) MessageBranchPart(typeName)
   {
-    ProtoParserContext.perThread().addNewDefinedType(typeName);
-    registerHandlingInstruction(typeName, t);
+    context.addNewDefinedType(typeName);
+    //registerHandlingInstruction(typeName, t);
   }
 }
 void MessageBranchPart(TypeName parent) : {

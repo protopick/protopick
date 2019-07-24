@@ -98,11 +98,12 @@ public class TypeName {
     /* Situation: We're parsing a message. One of its fields refers to another type (a message, enum...).
        That type reference is either:
        1. Qualified (with a dot or several) type with a package name: name.of.a.package.nameOfType.[nameOfSubtype...]
-       2. Qualified (with a dot or several, or none) sub-message: nameOfAnotherMessage[.nameOfItsInnerMessage...]
+       2. Qualified (with a dot or several, or none) sub-message: nameOfAnotherMessage[.nameOfItsInnerMessage...],
        where nameOfAnotherMessage is a direct child of any ancestor of the current message (immediate parent of the field being defined),
        up to and including the top level (the current package) as the farthest such ancestor.
        That way this includes any matching types from the top level of the current package, too.
        If there's no current package, #2 assumes it to be an empty string.
+       <br/>
        #1 has precedence over #2, because if there's such a conflict, #2 can work around by providing
        a path from one level higher. If it reaches the package level, and if there's still a conflict,
        then the user can work around by adding a package prefix to #2 (effectively making it another #1).
@@ -113,15 +114,12 @@ public class TypeName {
        (Also, the same package may be across multiple files => involving multiple parsers...)
        <br/>
        Do NOT use until the whole input gets parsed. Otherwise this can't identify "relative" (sub-message) names.
-       <br/>
-       Only use it from the same Thread as the one that created the parser.
     */
-    public TypeName resolveFieldType() {
+    public TypeName resolveFieldType (ProtoParserContext context) {
         if (!use.mayBeRelative())
             throw new UnsupportedOperationException("You can't call resolve() for identifiers that define new types. Only call it for identifiers that define non-simple fields.");
         // @TODO prepopulate: com.google.Empty etc.
         // 1. Try this,name as a combination of a package name and a (potentially multi-level) type name within that package.
-        ProtoParserContext context= ProtoParserContext.perThread();
         if (context.newTypes.containsKey(name))
             return context.newTypes.get(name);
         //final String packageParts[]= packageName.split(".");

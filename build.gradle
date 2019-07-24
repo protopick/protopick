@@ -2,6 +2,11 @@
 plugins {
     id 'com.intershop.gradle.javacc' version '3.0.3'
     id  'java'
+    id  'application'
+}
+
+application {
+    mainClassName = "protongo.compile.Run"
 }
 
 javacc {
@@ -28,6 +33,7 @@ sourceSets {
 
 dependencies {
     javacc "net.java.dev.javacc:javacc:7.0.4"
+    implementation "commons-cli:commons-cli:1.4"
 }
 
 repositories {
