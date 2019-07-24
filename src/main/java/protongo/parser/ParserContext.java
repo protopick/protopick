@@ -15,7 +15,7 @@ import protongo.compile.TypeNameDefinition;
 
 /** Load parser(s) for included file(s).
  * This is not memory efficient. That's not the goal. */
-public final class ProtoParserContext {
+public final class ParserContext {
     public final List<String> importPaths= new ArrayList<>();
 
     private final Map<String, TypeNameDefinition> newTypeNamesMutable = new HashMap<>();
@@ -50,7 +50,7 @@ public final class ProtoParserContext {
                 public void run() {
                     // We must instantiate a new parser in a new thread
                     ProtoParser parser = new ProtoParser( loadFile(filePath) );
-                    parser.registerWithContext(ProtoParserContext.this);
+                    parser.registerWithContext(ParserContext.this);
                     try {
                         parser.Input();
                     } catch (ParseException e) {

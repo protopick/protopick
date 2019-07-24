@@ -1,21 +1,18 @@
 package protongo.compile;
 
-import java.io.InputStream;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
-import org.apache.commons.cli.Parser;
 // Watch out: Both Apache Commons CLI, and JavaCC-generated code, define class "ParseException"
 import org.apache.commons.cli.ParseException;
-import protongo.parser.ProtoParser;
-import protongo.parser.ProtoParserContext;
+
 
 public class Run {
     public static void main(String... args) {
-        final ProtoParserContext context= new ProtoParserContext();
+        final protongo.parser.ParserContext context= new protongo.parser.ParserContext();
         final String fileNames[];
         {
             final Options options = new Options();

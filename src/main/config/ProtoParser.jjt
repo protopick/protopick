@@ -31,10 +31,10 @@ import protongo.compile.TypeNamePackage;
 */
 public class ProtoParser {
     /** Mutable - set once parsed, used when instantiating other TypeName instances. 'package' is at the top of .proto files,
-    * hence this gets processed before BNF rules that need it. It's NOT per ProtoParserContext, but per-parser (per .proto file).
+    * hence this gets processed before BNF rules that need it. It's NOT per ParserContext, but per-parser (per .proto file).
     * <br/>
     * Because of this, don't use auto-generated methods ReInit(), or reset packageName to null first.
-    * Then you'd have to call ProtoParserContext.unregisterContext(), too.
+    * Then you'd have to call ParserContext.unregisterContext(), too.
     * */
     private TypeNamePackage packageName= new TypeNamePackage(Token.newToken(ProtoParserConstants.PACKAGE_TKN), "");
 
@@ -54,9 +54,9 @@ public class ProtoParser {
         }
     }*/
 
-    private ProtoParserContext context;
+    private ParserContext context;
 
-    public void registerWithContext (ProtoParserContext givenContext) {
+    public void registerWithContext (ParserContext givenContext) {
         if (context!=null) {
             throw new IllegalStateException("Parser already has its context set.");
         }

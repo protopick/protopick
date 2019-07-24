@@ -1,7 +1,6 @@
 package protongo.compile;
 
 import protongo.parser.ProtoParserConstants;
-import protongo.parser.ProtoParserContext;
 import protongo.parser.Token;
 
 /** Indicate a type that a field definition refers to. Not for defining new types/enums. */
@@ -39,12 +38,12 @@ public final class TypeNameOfField extends TypeName {
        <br/>
        While parsing, even if that other type is in the same file, we don't want to start parsing it right now.
        We've either already parsed it, or we will parse it later, in this same ProtoParser instance.
-       Hence, BNF rules don't resolve, they only register Type instances with ProtoParserContext. We call this resolveFieldType() only later, once all BNF rules were processed.
+       Hence, BNF rules don't resolve, they only register Type instances with ParserContext. We call this resolveFieldType() only later, once all BNF rules were processed.
        (Also, the same package may be across multiple files => involving multiple parsers...)
        <br/>
        Do NOT use until the whole input gets parsed. Otherwise this can't identify "relative" (sub-message) names.
     */
-    public TypeNameDefinition resolve (ProtoParserContext context) {
+    public TypeNameDefinition resolve (protongo.parser.ParserContext context) {
         if (!use.mayBeRelative())
             throw new UnsupportedOperationException("You can't call resolve() for identifiers that define new types. Only call it for identifiers that define non-simple fields.");
         // @TODO prepopulate: com.google.Empty etc.
