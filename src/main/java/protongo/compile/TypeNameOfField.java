@@ -12,7 +12,7 @@ public final class TypeNameOfField extends TypeName {
      * @param givenPackage pass "packageName" variable from BNF grammar rules
      * @param givenName May contain dot-separated parts, or just one name.
      * */
-    public TypeNameOfField (String givenPackage, TypeNameDefinition givenContext, String givenName) {
+    public TypeNameOfField (TypeNamePackage givenPackage, TypeNameDefinition givenContext, String givenName) {
         super (TypeNameUse.FIELD, null, givenContext, givenPackage, givenName);
     }
 
@@ -49,8 +49,8 @@ public final class TypeNameOfField extends TypeName {
             throw new UnsupportedOperationException("You can't call resolve() for identifiers that define new types. Only call it for identifiers that define non-simple fields.");
         // @TODO prepopulate: com.google.Empty etc.
         // 1. Try this,name as a combination of a package name and a (potentially multi-level) type name within that package.
-        if (context.newTypes.containsKey(name))
-            return context.newTypes.get(name);
+        if (context.newTypeNames.containsKey(name))
+            return context.newTypeNames.get(name);
         //final String packageParts[]= packageName.split(".");
         // TODO TEST: NO SPLITTING
         //String subPackage= packageName;
@@ -63,8 +63,8 @@ public final class TypeNameOfField extends TypeName {
         String subContext= parentOrContext.fullName();
         while (true) {
             String candidate= subContext+name;
-            if (context.newTypes.containsKey(candidate))
-                return context.newTypes.get(candidate);
+            if (context.newTypeNames.containsKey(candidate))
+                return context.newTypeNames.get(candidate);
             int i= subContext.lastIndexOf(".");
             if (i>0) {
                 subContext= subContext.substring(0, i);

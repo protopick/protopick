@@ -11,7 +11,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import protongo.compile.TypeName;
 import protongo.compile.TypeNameDefinition;
 
 /** Load parser(s) for included file(s).
@@ -19,17 +18,17 @@ import protongo.compile.TypeNameDefinition;
 public final class ProtoParserContext {
     public final List<String> importPaths= new ArrayList<>();
 
-    private final Map<String, TypeNameDefinition> newTypesMutable= new HashMap<>();
+    private final Map<String, TypeNameDefinition> newTypeNamesMutable = new HashMap<>();
 
     /**"New types" mean type names used not for fields, but for types defined by the user ("message", "enum").
      * Full type name (including protobuf package, if any) -> Type. We add them in by addType(TypeName) as we parse. */
-    public final Map<String, TypeNameDefinition> newTypes= Collections.unmodifiableMap(newTypesMutable);
+    public final Map<String, TypeNameDefinition> newTypeNames = Collections.unmodifiableMap(newTypeNamesMutable);
 
     public void addNewDefinedType( TypeNameDefinition type ) {
         final String fullName = type.fullName();
-        if (newTypesMutable.containsKey(fullName))
+        if (newTypeNamesMutable.containsKey(fullName))
             throw new IllegalArgumentException("Type with name " +fullName+ " has been registered already.");
-        newTypesMutable.put(fullName, type);
+        newTypeNamesMutable.put(fullName, type);
     }
 
     // We parse each included file in a separate thread. That way waiting for files blocks as little as

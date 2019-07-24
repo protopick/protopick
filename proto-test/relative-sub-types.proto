@@ -24,3 +24,8 @@ message OuterMost {
     Address.StreetAddress temporaryAddress = 4;
     relative.sub.types.OuterMost.Address workPostalAddress = 5;
 }
+
+enum OutermostEnum {
+    HAPPY = 0;
+    OK = 1;
+}

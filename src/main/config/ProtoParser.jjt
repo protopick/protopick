@@ -25,6 +25,7 @@ import protongo.compile.Field;
 import protongo.compile.TypeName;
 import protongo.compile.TypeNameOfField;
 import protongo.compile.TypeNameDefinition;
+import protongo.compile.TypeNamePackage;
 
 /** Protobuf 3 grammar, with support for collecting limited type information. Purpose: Generate a custom schema and similar.
 */
@@ -35,7 +36,7 @@ public class ProtoParser {
     * Because of this, don't use auto-generated methods ReInit(), or reset packageName to null first.
     * Then you'd have to call ProtoParserContext.unregisterContext(), too.
     * */
-    private String packageName;
+    private TypeNamePackage packageName= new TypeNamePackage(Token.newToken(ProtoParserConstants.PACKAGE_TKN), "");
 
     /*When you want to generate a schema for a given "message," add a special (single-line) comment immediately before
     that "message." See handlingInstruction(Token) and how it's used.
@@ -108,8 +109,8 @@ TOKEN :
 | <GRATETHAN_TKN: ">">
 | <SYNTAX_TKN: "syntax">
 | <BOOLEAN_TKN: "true" | "false">
-| <ATTRIBUTE_TKN: "required"
-                | "optional">
+| <REQUIRED_TKN: "required">
+| <OPTIONAL_TKN: "optional">
 | <OPTION_TKN: "option">
 | <IMPORT_TKN: "import">
 | <PUBLIC_TKN: "public">
@@ -155,13 +156,9 @@ void Input() : {
    | OptionPart()
    | PackagePart()
    | ServicePart()
-   | {if (packageName==null)
-        packageName= "";
-     }
-     ( MessagePart(null)
-       | EnumPart(null)
-       | ExtendPart())*
-     )
+   | MessagePart(null)
+   | EnumPart(null)
+   | ExtendPart())*
 }
 
 void ImportPart() : {
@@ -314,12 +311,15 @@ Token KeyPart() : {
 
 void PackagePart() : {
  Token t;
+ TypeName newPackageName;
 } { 
-  t=<PACKAGE_TKN> ClassPartNoCapture() <SEMI_COLON_TKN> //@TODO
-  {if (packageName!=null) {
-      throw new IllegalStateException("packageName has been already set to: " +packageName);
-   }
-   packageName= t.toString(); }
+  t=<PACKAGE_TKN> newPackageName=ClassPart(true, t, null) <SEMI_COLON_TKN>
+  { if (!packageName.name.isEmpty()) {
+      throw new IllegalStateException("packageName has been already set to: " +packageName.name);
+    }
+    // Convert back to string, and to package-specific instance. Easier than changing ClassPart(), which is already complex.
+    packageName= new TypeNamePackage(t, newPackageName.fullName());
+  }
 }
 
 void ServicePart() : {
@@ -372,7 +372,7 @@ void MessageBranchPart(TypeNameDefinition typeDefinition) : {
    (AttributeMemberPart(typeDefinition)
     |EnumPart(typeDefinition)
     |ReservedPart()
-    |OneOfPart()
+    |OneOfPart(typeDefinition)
     |MapPart(typeDefinition)
     |MessagePart(typeDefinition)
     |ExtentionsPart()
@@ -383,25 +383,30 @@ void MessageBranchPart(TypeNameDefinition typeDefinition) : {
 }
 
 void AttributeMemberPart(TypeNameDefinition context) : {
-  boolean isRepeated= false;
+  Field field= new Field();
+  field.definitionType= context;
+  Token attribute;
 } { 
-  [AttributePart()]
-  [RepeatedPart() {isRepeated= true;}]
-  ( MemberPart(context)
+  [ attribute=AttributePart() {field.attribute= Field.attributeFrom(attribute);} ]
+  [RepeatedPart() {field.repeated= true;}]
+  ( MemberPart(field)
    |GroupPart() )
 }
 
-void MemberPart(TypeNameDefinition context) : {
+void MemberPart(/*boolean isOneOf,*/Field field) : {
  TypeNameOfField type;
- Token identifier, number;
+ Token name, number;
 } {
-  type=ClassOrTypePart(context) identifier=KeyPart() <EQUL_TKN> number=NumberPart() [BracketPart()] <SEMI_COLON_TKN>
-  {throw new Error("TODO");}
+  field.fieldType=ClassOrTypePart(field.definitionType) name=KeyPart() <EQUL_TKN> number=NumberPart() [BracketPart()] <SEMI_COLON_TKN>
+  { field.name= name.image;
+    throw new Error("TODO register field");}
 }
 
-void AttributePart() : {
+Token AttributePart() : {
+  Token t;
 } {
-    <ATTRIBUTE_TKN>
+    t=<REQUIRED_TKN> {return t;}
+    | t=<OPTIONAL_TKN> {return t;}
 }
 void RepeatedPart() : {
 } { 
@@ -446,7 +451,9 @@ void EnumPart(TypeNameDefinition parent) : {
    <LEFTBRACE_TKN>
    (EnumMemberPart())*
    <RIGHTBRACE_TKN>
-   {throw new Error("TODO");}
+   { context.addNewDefinedType( typeName );
+     throw new Error("TODO");
+   }
 }
 void EnumMemberPart() : {
 } { 
@@ -468,12 +475,14 @@ void DeviderPart() : {
     | <TO_TKN>
 }
 
-void OneOfPart() : {
-} { 
+void OneOfPart(TypeNameDefinition context) : {
+  Field field= new Field();
+  field.definitionType= context;
+} {
   <ONEOF_TKN>
-   ClassPartNoCapture()
+   ClassPartNoCapture() //From the specification this name seems almost unused
    <LEFTBRACE_TKN>
-   (MemberPart(null))*
+   (MemberPart(/*true,*/field))*
    <RIGHTBRACE_TKN>
 }
 

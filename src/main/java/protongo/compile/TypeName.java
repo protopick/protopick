@@ -12,8 +12,8 @@ public abstract class TypeName {
         - relevant and if
         - parsed already, or if assigned by the parser as default package.
         Null if not relevant, or not parsed/assigned. */
-    private final String packageName;
-    final String name;
+    private final TypeNamePackage packageName;
+    public final String name;
     final TypeNameDefinition parentOrContext;
     /** "kind" (token.kind) of newTypeToken passed to the constructor, if it were non-null. Otherwise this is -1. */
     private final int newTypeTokenKind;
@@ -23,10 +23,12 @@ public abstract class TypeName {
     });
     /*
           @TODO Run against .proto, then remove this comment line: It may be null for usages that we're not interested in (for example other usages of ClassPart BNF rule). */
-    TypeName (TypeNameUse givenUse, Token newTypeToken, TypeNameDefinition givenParent, String givenPackage, String givenName) {
+    TypeName (TypeNameUse givenUse, Token newTypeToken, TypeNameDefinition givenParent, TypeNamePackage givenPackage, String givenName) {
         use= givenUse;
         parentOrContext = givenParent;
         packageName = givenPackage;
+        if (givenPackage!=null && givenPackage.use.definesNewType())
+            throw new IllegalArgumentException("givenPackage must not define a new type.");
         if (givenName==null || givenName.isEmpty())
             throw new IllegalArgumentException("Type name must not be empty.");
         name = givenName;
@@ -49,8 +51,8 @@ public abstract class TypeName {
             throw new UnsupportedOperationException("Referral type names don't have full name defined.");
         if (parentOrContext != null)
             return parentOrContext.fullName() + '.' + name;
-        else if (packageName != null && !packageName.isEmpty())
-            return packageName + '.' + name;
+        else if (packageName != null)
+            return packageName.name + '.' + name;
         else
             return name;
     }
