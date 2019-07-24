@@ -43,33 +43,35 @@ public final class TypeNameOfField extends TypeName {
        <br/>
        Do NOT use until the whole input gets parsed. Otherwise this can't identify "relative" (sub-message) names.
     */
-    public TypeNameDefinition resolve (protongo.parser.ParserContext context) {
-        if (!use.mayBeRelative())
-            throw new UnsupportedOperationException("You can't call resolve() for identifiers that define new types. Only call it for identifiers that define non-simple fields.");
-        // @TODO prepopulate: com.google.Empty etc.
-        // 1. Try this,name as a combination of a package name and a (potentially multi-level) type name within that package.
-        if (context.newTypeNames.containsKey(name))
-            return context.newTypeNames.get(name);
-        //final String packageParts[]= packageName.split(".");
-        // TODO TEST: NO SPLITTING
-        //String subPackage= packageName;
-        //    int i= subPackage.lastIndexOf(".");
+    public TypeDefinition resolve (protongo.parser.ParserContext context) {
+        synchronized (context) {
+            if (!use.mayBeRelative())
+                throw new UnsupportedOperationException(
+                        "You can't call resolve() for identifiers that define new types. Only call it for identifiers that define non-simple fields.");
+            // @TODO prepopulate: com.google.Empty etc.
+            // 1. Try this,name as a combination of a package name and a (potentially multi-level) type name within that package.
+            if (context.newTypes.containsKey(name))
+                return context.newTypes.get(name);
+            //final String packageParts[]= packageName.split(".");
+            // TODO TEST: NO SPLITTING
+            //String subPackage= packageName;
+            //    int i= subPackage.lastIndexOf(".");
 
-        // 2. Try this name as a relative to (if any) outer message. Start with the immediate parent, then grandparent, great-grandparent... up to the top level message.
-        // nameOfAnotherMessage[.nameOfItsInnerMessage...]
-        // Start from the innermost context - the closest has the highest precedence.
-        //final String nameParts[]= parentOrContext.fullName().split(".");
-        String subContext= parentOrContext.fullName();
-        while (true) {
-            String candidate= subContext+name;
-            if (context.newTypeNames.containsKey(candidate))
-                return context.newTypeNames.get(candidate);
-            int i= subContext.lastIndexOf(".");
-            if (i>0) {
-                subContext= subContext.substring(0, i);
+            // 2. Try this name as a relative to (if any) outer message. Start with the immediate parent, then grandparent, great-grandparent... up to the top level message.
+            // nameOfAnotherMessage[.nameOfItsInnerMessage...]
+            // Start from the innermost context - the closest has the highest precedence.
+            //final String nameParts[]= parentOrContext.fullName().split(".");
+            String subContext = parentOrContext.fullName();
+            while (true) {
+                String candidate = subContext + name;
+                if (context.newTypes.containsKey(candidate))
+                    return context.newTypes.get(candidate);
+                int i = subContext.lastIndexOf(".");
+                if (i > 0) {
+                    subContext = subContext.substring(0, i);
+                } else
+                    return null;
             }
-            else
-                return null;
         }
     }
 }

@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import protongo.compile.Field;
+import protongo.compile.TypeDefinition;
 import protongo.compile.TypeName;
 import protongo.compile.TypeNameOfField;
 import protongo.compile.TypeNameDefinition;
@@ -361,10 +362,10 @@ void MessagePart(TypeNameDefinition parent) : {
 } {
   t=<MESSAGE_TKN>
   typeName=ClassPartDefinition(t, parent)
-  MessageBranchPart( typeName )
-  { context.addNewDefinedType( typeName );
+  { TypeDefinition type= context.addNewDefinition( typeName );
     //registerHandlingInstruction(typeName, t);
   }
+  MessageBranchPart( typeName )
 }
 void MessageBranchPart(TypeNameDefinition typeDefinition) : {
 } {
@@ -448,12 +449,12 @@ void EnumPart(TypeNameDefinition parent) : {
 } {
   t= <ENUM_TKN>
    typeName=ClassPartDefinition(t, parent)
+   { context.addNewDefinition( typeName );
+     throw new Error("TODO");
+   }
    <LEFTBRACE_TKN>
    (EnumMemberPart())*
    <RIGHTBRACE_TKN>
-   { context.addNewDefinedType( typeName );
-     throw new Error("TODO");
-   }
 }
 void EnumMemberPart() : {
 } { 

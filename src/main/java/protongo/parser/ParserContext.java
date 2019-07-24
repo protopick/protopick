@@ -5,12 +5,12 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import protongo.compile.TypeDefinition;
 import protongo.compile.TypeNameDefinition;
 
 /** Load parser(s) for included file(s).
@@ -18,17 +18,23 @@ import protongo.compile.TypeNameDefinition;
 public final class ParserContext {
     public final List<String> importPaths= new ArrayList<>();
 
-    private final Map<String, TypeNameDefinition> newTypeNamesMutable = new HashMap<>();
-
     /**"New types" mean type names used not for fields, but for types defined by the user ("message", "enum").
-     * Full type name (including protobuf package, if any) -> TypeDefinition. We add them in by addNewDefinedType(TypeName) as we parse. */
-    public final Map<String, TypeNameDefinition> newTypeNames = Collections.unmodifiableMap(newTypeNamesMutable);
+     * Full type name (including protobuf package, if any) -> TypeDefinition. We add them in by addNewDefinedType(TypeName) as we parse.
+     * <br/>Do SYNCHRONIZE any access by running within synchronized(newTypes) {...}.
+     * */
+    // We only keep a mutable map. Having a non-mutable view meant we'd need to synchronize on one of them only (or to synchronize on the whole ParserContext instance, which is not that granular).
+    public final Map<String, TypeDefinition> newTypes = new HashMap<>();
 
-    public void addNewDefinedType( TypeNameDefinition type ) {
-        final String fullName = type.fullName();
-        if (newTypeNamesMutable.containsKey(fullName))
-            throw new IllegalArgumentException("Type with name " +fullName+ " has been registered already.");
-        newTypeNamesMutable.put(fullName, type);
+    /** Create a new TypeDefinition instance for the given name. Register it with the context, and return. */
+    public TypeDefinition addNewDefinition( TypeNameDefinition typeName ) {
+        final String fullName = typeName.fullName();
+        synchronized (newTypes) {
+            if (newTypes.containsKey(fullName))
+                throw new IllegalArgumentException("Type with name " + fullName + " has been registered already.");
+            TypeDefinition type= new TypeDefinition(typeName);
+            newTypes.put(fullName, type);
+            return type;
+        }
     }
 
     // We parse each included file in a separate thread. That way waiting for files blocks as little as
