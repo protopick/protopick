@@ -29,8 +29,10 @@ public abstract class TypeName {
         packageName = givenPackage;
         if (givenPackage!=null && givenPackage.use.definesNewType())
             throw new IllegalArgumentException("givenPackage must not define a new type.");
-        if (givenName==null || givenName.isEmpty())
-            throw new IllegalArgumentException("Type name must not be empty.");
+        if (givenName==null)
+            throw new IllegalArgumentException("Type name must not be null.");
+        if( givenName.isEmpty() && use!= protongo.compile.TypeNameUse.PACKAGE )
+            throw new IllegalArgumentException("Type name (other than a package name) must not be empty.");
         name = givenName;
         if ( (newTypeToken!=null) != use.registersWithToken() )
             throw new IllegalArgumentException("Param newTypeToken can be used when, and only when, defining not a new field, but a new type: " +name);
@@ -42,7 +44,8 @@ public abstract class TypeName {
             newTypeTokenKind = -1;
         }
         // We can't check this.packageName, since we can't require the package name in .proto.
-        if (parentOrContext ==null && !ACCEPTABLE_TOP_LEVEL_TOKEN_KINDS.contains(newTypeTokenKind))
+        if (parentOrContext==null && use!=TypeNameUse.FIELD_PRIMITIVE
+        && !ACCEPTABLE_TOP_LEVEL_TOKEN_KINDS.contains(newTypeTokenKind))
             throw new IllegalArgumentException("Top-level type must be a message, or an enum, but not a " +newTypeToken.image);
     }
 

@@ -1,6 +1,7 @@
 package protongo.compile;
 
 import protongo.parser.ParserConstants;
+// We only use Token as a parameter, but we don't store it. Otherwise it would hold on all the previous tokens, too.
 import protongo.parser.Token;
 
 public class Field {
@@ -26,11 +27,7 @@ public class Field {
     /** Used only if .isMap is true. For key type use typeNameOfField. */
     public TypeNameOfField typeNameOfMapValues;
 
-    /** If not set, then use nameToken. */
     public String name;
-
-    /** If */
-    public Token token;
 
     /** Link the new field and givenTypeDefinition both ways: 1. set this.typeDefinition,
      * 2. add this field to givenTypeDefinition.fields. */

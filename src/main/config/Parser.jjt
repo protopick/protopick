@@ -461,9 +461,12 @@ void EnumPart(TypeNameDefinition parent) : {
 }
 void EnumMemberPart(Field field) : {
   TypeNameOfField typeNameOfField;
+  Token name;
 } {
   [EnumOptionMemberPart() {throw new Error("Enum options are not supported.");}]
-  typeNameOfField= /*TODO replace with IdentPart*/ClassOrTypePart( field.typeDefinition.typeNameDefinition )
+  /* Previously ClassOrTypePart, which made it complicated. */
+  name= IdentPart()
+  {field.name= name.image;}
   <EQUL_TKN> ValuePart() [BracketPart()] <SEMI_COLON_TKN>
 }
 void EnumOptionMemberPart() : {

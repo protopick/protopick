@@ -8,12 +8,13 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 // Watch out: Both Apache Commons CLI, and JavaCC-generated code, define class "ParseException"
 import org.apache.commons.cli.ParseException;
-
+import protongo.generate.Generator;
 
 public class Run {
     public static void main(String... args) {
         final protongo.parser.ParserContext context= new protongo.parser.ParserContext();
-        final String fileNames[];
+        final CompiledSet compiledSet= new CompiledSet();
+        final Generator generator;
         {
             final Options options = new Options();
             // Option -I and --proto_path is based on `protoc`. You can repeat it, passing a different value each
@@ -29,6 +30,14 @@ public class Run {
                     .hasArg() // Don't use .hasArgs(), because that consumes the rest of args, including the filenames to parse!
                     .build();
             options.addOption (proto_path);
+
+            Option generate= Option
+                    .builder("g")
+                    .longOpt("generate")
+                    .desc( "Generator class. A full, package-qualified name.")
+                    .hasArg()
+                    .build();
+            options.addOption(generate);
 
             Option exports= Option
                     .builder("ep")
@@ -56,14 +65,13 @@ public class Run {
             options.addOption("h", "help", false, "Show this help.");
 
             CommandLineParser parser = new DefaultParser();
-            Compile compile= new Compile();
             try {
                 CommandLine cli = parser.parse(options, args);
 
-                fileNames= cli.getArgs();
-                if (fileNames.length==0 || cli.hasOption('h')) {
+                compiledSet.inputFileNames= cli.getArgs();
+                if (compiledSet.inputFileNames.length==0 || cli.hasOption('h')) {
                     HelpFormatter formatter = new HelpFormatter();
-                    formatter.printHelp( "gradle run --args='arguments-as-per-below' OR: java protongo.compile.Run arguments-as-per-below", options );
+                    formatter.printHelp( "gradle run --args='-I path -I another/path options-as-per-below file.proto another-file.proto' OR: java protongo.compile.Run the-same-arguments", options );
                     return;
                 }
 
@@ -73,18 +81,28 @@ public class Run {
                 if (context.includePaths==null) // if the option is not present, this not an empty array, but null!
                     throw new IllegalArgumentException("Must pass some -I or --proto_path, even for the folder(s) where the start file(s) are.");
 
-                compile.out= cli.getOptionValue('o');
-                compile.exportItems= cli.getOptionProperties("ep"); // Contrary to cli.getOptionValues(String), this is guaranteed non-null
+                String generatorClassName=cli.getOptionValue('g');
+                if (generatorClassName==null)
+                    throw new IllegalArgumentException("Must pass an -g or --generator option with a generator's full class name.");
+                try {
+                    Class<Generator> generatorClass = (Class<Generator>) Class.forName(generatorClassName);
+                    generator= generatorClass.newInstance();
+                }
+                catch(ClassNotFoundException|InstantiationException|IllegalAccessException e) {
+                    throw new RuntimeException("Couldn't load a generator class " +generatorClassName, e);
+                }
+
+                compiledSet.out= cli.getOptionValue('o');
+                compiledSet.exportItems= cli.getOptionProperties("ep"); // Contrary to cli.getOptionValues(String), this is guaranteed non-null
             } catch (ParseException exp) {
                 System.err.println("Error parsing the parameters: " + exp.getMessage());
                 return;
             }
         }
-        for (String fileName: fileNames) {
+        for (String fileName: compiledSet.inputFileNames) {
             context.parse( fileName );
             }
-        context.waitUntilComplete();
-
-
+        context.waitUntilComplete(); // that also synchronizes all fields etc.
+        generator.generate( context, compiledSet );
     }
 }
