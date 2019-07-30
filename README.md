@@ -11,3 +11,6 @@ To invoke from Gradle, run:
 
 For help on the actual arguments, invoke:
 `gradle run` or `gradle run --args='--help'`
+
+For example
+`gradle clean build  run --args='-I proto-test -g protongo.generate.MessagesMongo -ep OuterMost=outer_most.js relative-sub-types.proto'`

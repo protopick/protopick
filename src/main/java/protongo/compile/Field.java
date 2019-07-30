@@ -2,9 +2,11 @@ package protongo.compile;
 
 import protongo.parser.ParserConstants;
 // We only use Token as a parameter, but we don't store it. Otherwise it would hold on all the previous tokens, too.
+import protongo.parser.HandlingInstructed;
+import protongo.parser.HandlingInstruction;
 import protongo.parser.Token;
 
-public class Field {
+public class Field implements HandlingInstructed {
     public static enum Attribute { REQUIRED, OPTIONAL }
     public static Attribute attributeFrom(Token t) {
         switch (t.kind) {
@@ -32,7 +34,11 @@ public class Field {
     /** Link the new field and givenTypeDefinition both ways: 1. set this.typeDefinition,
      * 2. add this field to givenTypeDefinition.fields. */
     public Field (TypeDefinition givenTypeDefinition) {
-        typeDefinition= givenTypeDefinition;
+        typeDefinition = givenTypeDefinition;
         typeDefinition.fields.add (this);
     }
+
+    private HandlingInstruction instruction;
+    public HandlingInstruction getInstruction() { return instruction; }
+    public void setInstruction(HandlingInstruction given) { instruction = given; }
 }

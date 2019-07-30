@@ -9,5 +9,5 @@ import protongo.parser.ParserContext;
  *  we collect what types, fields... we want to export.
  * */
 public interface Generator {
-    public void generate (ParserContext context, CompiledSet compiledSet);
+    //public void generate (ParserContext context, CompiledSet compiledSet);
 }

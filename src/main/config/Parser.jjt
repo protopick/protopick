@@ -18,8 +18,10 @@ options {
 PARSER_BEGIN(Parser)
 package protongo.parser;
 
+import java.util.AbstractMap; // We use AbstractMap.SimpleEntry for typed pairs (2-item tuples)
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import protongo.compile.Field;
 import protongo.compile.TypeDefinition;
@@ -39,21 +41,37 @@ public class Parser {
     * */
     private TypeNamePackage packageName= new TypeNamePackage(Token.newToken(ParserConstants.PACKAGE_TKN), "");
 
-    /*When you want to generate a schema for a given "message," add a special (single-line) comment immediately before
-    that "message." See handlingInstruction(Token) and how it's used.
+    // @For removing the leading comment slashes "//" and any whitespace left of them:
+    private static final Pattern COMMENT_PREFIX= Pattern.compile( "^\\w*//" );
+
+    /* To indicate extra information, add a special (single-line) comment (or several) immediately before
+    that related token. TODO check: There must be no empty line between the comment(s) and mainToken.
+    See handlingInstruction(Token) and how it's used.
+     */
     private static final Pattern HANDLING_INSTRUCTION= Pattern.compile("GENERATE *DB *SCHEMA");
 
-    /** If the given messageToken has a special comment immediately before it, then this extracts its value.
-        Otherwise it returns null.
-    private void registerHandlingInstruction(TypeName type, Token messageToken) {
-        if (messageToken.specialToken!=null) {
-            String image = messageToken.specialToken.image;
-            if (HANDLING_INSTRUCTION.matcher(image).matches()) {
+    /** If the given mainToken has any special comment(s) immediately before it, then this extracts
+     *  its value and registers it. */
+    private void addHandlingInstruction(HandlingInstructed instructed, Token mainToken) {
+        if (mainToken.specialToken!=null) {
+            String raw= "";
+            Token special= mainToken.specialToken;
+            while (special!=null) {
+                raw= special.image+ raw; // No need to inject a new line in between, because SPECIAL_TOKEN contains a trailing newline
+                special= mainToken.specialToken;
+            }
+
+            Matcher match= HANDLING_INSTRUCTION.matcher(raw);
+            if (match.matches()) {
                 HandlingInstruction instruction= new HandlingInstruction();
-                context.instructions.put (type, instruction);
+                if(true) throw new Error("TODO");
+                if (instructed.getInstruction()!=null)
+                    instructed.getInstruction().append(instruction);
+                else
+                    instructed.setInstruction(instruction);
             }
         }
-    }*/
+    }
 
     private ParserContext context;
 
@@ -86,7 +104,7 @@ SKIP :
 }
 
 SPECIAL_TOKEN :
-{
+{// @TODO allow multi-line comments /* ... */
   <SINGLE_LINE_COMMENT: "//" (~["\n","\r"])* ("\n"|"\r"|"\r\n")>
 }
 
@@ -236,37 +254,43 @@ void OptionPart() : {
 
 void ClassPartNoCapture() : {
 } {
-  ClassPart(null, null, null)
+  ClassPart(null, null, null, null)
 }
 
 /** @param isNewType It's for an extra validation of the intent:
-* true - if it's for defining new types ("message Abc", "enum Def"...);
+* true - if it's for defining new types ("message Abc", "enum Def"...). These may be inner types (like Java inner "static" classes).
   false - if it's for defining a field only ([repeated] relative.type.path fieldName);
   null - indicating that the rule consumer doesn't need TypeName
 * (and that it may have passed null-s as other parameters). This is complex enough, so better to be explicit.
 * @param newTypeToken indicates what kind of 'type' (e.g. "message", "enum"...) this identifier is for - if it's for defining a new
 * message/enum. Then the name defined here must not contain any dots (TypeName constructor validates that).
-  If, instead, we're defining a field (which refers to a message/enum), then newTypeToken must be null. The name may contain dots.*/
-TypeName ClassPart(Boolean isNewType, Token newTypeToken, TypeNameDefinition parentOrContext) : {
-    Token t;
+  If, instead, we're defining a field (which refers to a message/enum), then newTypeToken must be null. The name may contain dots.
+  @param parentOrContext Either a parent type (if isNewType), or a type where this field belongs
+  (if !isNewType).
+  @param field Only used when isNewType, then we put any handling instruction in the given field.
+  */
+TypeName ClassPart(Boolean isNewType, Token newTypeToken, TypeNameDefinition parentOrContext, Field field) : {
+    Token leftIdentPart, t; // Part of the type name before the first dot (if any)
     TypeNameDefinition typeNameDefinition= null; // Used only for new  types (not for fields).
-    String fieldFullName= ""; // Used only for fields (not for new types), and only if it's dot-separated
+    String fieldFullTypeName= ""; // Used only for types of defining fields (not for defining new types).
 } {
   {if (isNewType!=null && isNewType != (newTypeToken!=null))
       throw new IllegalArgumentException("isNewType: " +isNewType+ "doesn't match the fact that newTypeToken is "
             +(newTypeToken==null ? "null." : "non-null."));
   }
-  ( t=IdentPart()
-    {   fieldFullName= t.image;
+  ( leftIdentPart=IdentPart()
+    {   fieldFullTypeName= leftIdentPart.image;
         if (isNewType==Boolean.TRUE)
-            typeNameDefinition= new TypeNameDefinition(newTypeToken, packageName, parentOrContext, t.image);
+            typeNameDefinition= new TypeNameDefinition(newTypeToken, packageName, parentOrContext, leftIdentPart.image);
+        if (isNewType==Boolean.FALSE)
+            addHandlingInstruction( field, leftIdentPart );
     }
   | CustomOptionsPart()
   )
   (<DOT_TKN>
     ( t=IdentPart()
         {   if (isNewType!=null) {
-                fieldFullName+= '.' +t.image;
+                fieldFullTypeName+= '.' +t.image;
                 if (isNewType)
                     // Composing a dot-separated name. On every iteration, the previously captured typeName becomes the new parent.
                     typeNameDefinition= new TypeNameDefinition(newTypeToken, packageName, typeNameDefinition, t.image);
@@ -277,12 +301,12 @@ TypeName ClassPart(Boolean isNewType, Token newTypeToken, TypeNameDefinition par
   )*
   {   if (isNewType!=null) {
           if (isNewType) {
-              if (!typeNameDefinition.fullName().endsWith(fieldFullName))
-                  throw new IllegalStateException( typeNameDefinition.fullName()+ " should end with " +fieldFullName );
+              if (!typeNameDefinition.fullName().endsWith(fieldFullTypeName))
+                  throw new IllegalStateException( typeNameDefinition.fullName()+ " should end with " +fieldFullTypeName );
               return typeNameDefinition;
           }
           // The field reference type has context = parentOrContext. It doesn't have any dot-separated tokens added.
-          return new TypeNameOfField(packageName, parentOrContext, fieldFullName);
+          return new TypeNameOfField(packageName, parentOrContext, fieldFullTypeName);
       }
       return null;
   }
@@ -292,7 +316,7 @@ TypeName ClassPart(Boolean isNewType, Token newTypeToken, TypeNameDefinition par
 TypeNameDefinition ClassPartDefinition(Token newTypeToken, TypeNameDefinition parent) : {
     TypeName result;
 } {
-    result= ClassPart( true, newTypeToken, parent )
+    result= ClassPart( true, newTypeToken, parent, null )
     { return (TypeNameDefinition)result; }
 }
 
@@ -315,7 +339,7 @@ void PackagePart() : {
  Token t;
  TypeName newPackageName;
 } { 
-  t=<PACKAGE_TKN> newPackageName=ClassPart(true, t, null) <SEMI_COLON_TKN>
+  t=<PACKAGE_TKN> newPackageName=ClassPart(true, t, null, null) <SEMI_COLON_TKN>
   { if (!packageName.name.isEmpty()) {
       throw new IllegalStateException("packageName has been already set to: " +packageName.name);
     }
@@ -364,7 +388,7 @@ void MessagePart(TypeNameDefinition parent) : {
   t=<MESSAGE_TKN>
   typeName=ClassPartDefinition(t, parent)
   { TypeDefinition type= context.addNewDefinition( typeName );
-    //registerHandlingInstruction(typeName, t);
+    //context.typeInstructions.put( type, handlingInstruction(t) );
   }
   MessageBranchPart( type )
 }
@@ -375,7 +399,7 @@ void MessageBranchPart(TypeDefinition typeDefinition) : {
     |EnumPart(typeDefinition.typeNameDefinition)
     |ReservedPart()
     |OneOfPart(typeDefinition)
-    |MapPart(typeDefinition)
+    |MapPart( new Field(typeDefinition) )
     |MessagePart(typeDefinition.typeNameDefinition)
     |ExtentionsPart()
     |ExtendPart()
@@ -388,7 +412,11 @@ void AttributeMemberPart(TypeDefinition typeDefinition) : {
   Field field= new Field(typeDefinition);
   Token attribute;
 } { 
-  [ attribute=AttributePart() {field.attribute= Field.attributeFrom(attribute);} ]
+  [ attribute=AttributePart()
+    {field.attribute= Field.attributeFrom(attribute);
+     addHandlingInstruction(field, attribute);
+    }
+  ]
   [RepeatedPart() {field.isRepeated= true;}]
   ( MemberPart(field)
    |GroupPart() {throw new Error("GroupPart is not supported.");})
@@ -398,9 +426,10 @@ void MemberPart(/*boolean isOneOf,*/Field field) : {
  TypeNameOfField type;
  Token name, number;
 } {
-  field.typeNameOfField= ClassOrTypePart( field.typeDefinition.typeNameDefinition )
+  field.typeNameOfField= ClassOrTypePart(field)
   name=KeyPart() <EQUL_TKN> number=NumberPart() [BracketPart()] <SEMI_COLON_TKN>
-  { field.name= name.image;
+  {field.name= name.image;
+   //addHandlingInstruction(field,
   }
 }
 
@@ -420,12 +449,18 @@ void GroupPart() : {
   MessageBranchPart(null)
 }
 
-TypeNameOfField ClassOrTypePart(TypeNameDefinition context) : {
+TypeNameOfField ClassOrTypePart(Field field) : {
  Token t= null;
  TypeName cp;
 } {     
-    t=TypePart() {return new TypeNameOfField(t); }
-    | cp=ClassPart(false, null, context) {return (TypeNameOfField)cp;}
+    t=TypePart()
+    { //@TODO add handling instruction
+      return new TypeNameOfField(t);
+    }
+    | cp=ClassPart(false, null, field.typeDefinition.typeNameDefinition, field)
+    {//@TODO handling instruction
+     return (TypeNameOfField)cp;
+    }
 }
 
 Token TypePart() : {
@@ -450,11 +485,12 @@ void EnumPart(TypeNameDefinition parent) : {
 } {
    t= <ENUM_TKN>
    typeNameDefinition= ClassPartDefinition(t, parent)
-   { TypeDefinition typeDefinition= context.addNewDefinition( typeNameDefinition );
-     typeDefinition.isEnum= true;
+   { TypeDefinition type= context.addNewDefinition( typeNameDefinition );
+     //context.instructions.put (type, handlingInstruction(t) );
+     type.isEnum= true;
    }
    <LEFTBRACE_TKN>
-   {Field field= new Field(typeDefinition);
+   {Field field= new Field(type);
    }
    (EnumMemberPart(field))*
    <RIGHTBRACE_TKN>
@@ -465,6 +501,7 @@ void EnumMemberPart(Field field) : {
 } {
   [EnumOptionMemberPart() {throw new Error("Enum options are not supported.");}]
   /* Previously ClassOrTypePart, which made it complicated. */
+  /* We don't need handling instructions for enum values. */
   name= IdentPart()
   {field.name= name.image;}
   <EQUL_TKN> ValuePart() [BracketPart()] <SEMI_COLON_TKN>
@@ -495,20 +532,20 @@ void OneOfPart(TypeDefinition typeDefinition) : {
    <RIGHTBRACE_TKN>
 }
 
-void MapPart(TypeDefinition typeDefinition) : {
+void MapPart(Field field) : {
   Token name;
-  Field field= new Field(typeDefinition);
   field.isMap= true;
 } {
 
   <MAP_TKN>
   <LESSTHAN_TKN>
-   field.typeNameOfField= ClassOrTypePart(typeDefinition.typeNameDefinition)
+   field.typeNameOfField= ClassOrTypePart(field)
    <COMMA_TKN>
-   field.typeNameOfMapValues= ClassOrTypePart(typeDefinition.typeNameDefinition)
+   field.typeNameOfMapValues= ClassOrTypePart(field)
   <GRATETHAN_TKN>
   name= KeyPart() <EQUL_TKN> NumberPart() <SEMI_COLON_TKN>
-  {field.name= name.image;}
+  {//@TODO handling instruction
+   field.name= name.image;}
 }
 
 void ExtentionsPart() : {

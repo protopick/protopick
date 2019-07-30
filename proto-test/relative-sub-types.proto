@@ -7,7 +7,8 @@ package relative.sub.types;
 option java_multiple_files = true;
 option java_outer_classname = "RelativeSubTypes";
 option java_package = "relative.sub.types.java";
-
+/* multiline
+comment test*/
 message OuterMost {
     string name = 1;
     message Address {

@@ -1,5 +1,6 @@
 package protongo.compile;
 
+import java.io.File;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -23,13 +24,13 @@ public class Run {
             // Even though proto_path (and some other fields) are required, we don't call .required()
             // here. Otherwise id the user doesn't pass any parameters, parsing fails and we can't show
             // them a help screen. Hence we check the presence of required parameters manually later.
-            Option proto_path= Option
+            Option protoPath= Option
                     .builder("I")
                     .longOpt( "proto_path" )
                     .desc( "Import path. You can pass multiple, one '-I path' or '--proto_path path' per each." )
                     .hasArg() // Don't use .hasArgs(), because that consumes the rest of args, including the filenames to parse!
                     .build();
-            options.addOption (proto_path);
+            options.addOption (protoPath);
 
             Option generate= Option
                     .builder("g")
@@ -53,14 +54,18 @@ public class Run {
             // together with '-ee extension' or '--export_extension extension' and
             // '-en sand-wich', '-en under_score' or '-en lowercase' (or --export_naming with the same values)
             // When exporting, the output filenames are based on Protoc 'package'. They're not based on the location of the .proto files.
-            Option output= Option
-                    .builder("o")
+            Option output= Option.builder("o")
                     .longOpt("out")
                     .desc( "Output folder. If not present, using the current directory. This is prefixed "
                            +"in front of each export subpath from 'e' or '--export' parameter(s).")
-                    .hasArg()
-                    .build();
+                    .hasArg().build();
             options.addOption(output);
+            /* @TODO
+            Option instructedOnly= Option
+                    .builder("io")
+                    .longOpt("instructed_only")
+                    .desc("Whether to generate only for entries that have a 'handling instruction'.")
+                    .build();*/
 
             options.addOption("h", "help", false, "Show this help.");
 
@@ -93,6 +98,11 @@ public class Run {
                 }
 
                 compiledSet.out= cli.getOptionValue('o');
+                if (compiledSet.out == null)
+                    compiledSet.out = "";
+                else if (!compiledSet.out.endsWith(File.separator))
+                    compiledSet.out += java.io.File.separatorChar;
+
                 compiledSet.exportItems= cli.getOptionProperties("ep"); // Contrary to cli.getOptionValues(String), this is guaranteed non-null
             } catch (ParseException exp) {
                 System.err.println("Error parsing the parameters: " + exp.getMessage());
@@ -103,6 +113,7 @@ public class Run {
             context.parse( fileName );
             }
         context.waitUntilComplete(); // that also synchronizes all fields etc.
-        generator.generate( context, compiledSet );
+        compiledSet.compile(context);
+        //generator.generate( context, compiledSet );
     }
 }

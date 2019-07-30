@@ -1,6 +1,7 @@
 package protongo.compile;
 
 import protongo.parser.ParserConstants;
+import protongo.parser.ParserContext;
 import protongo.parser.Token;
 
 /** Indicate a type that a field definition refers to. Not for defining new types/enums. */
@@ -43,7 +44,7 @@ public final class TypeNameOfField extends TypeName {
        <br/>
        Do NOT use until the whole input gets parsed. Otherwise this can't identify "relative" (sub-message) names.
     */
-    public TypeDefinition resolve (protongo.parser.ParserContext context) {
+    public TypeDefinition resolve (ParserContext context) {
         synchronized (context) {
             if (!use.mayBeRelative())
                 throw new UnsupportedOperationException(

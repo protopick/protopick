@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import protongo.compile.Field;
 import protongo.compile.TypeDefinition;
 import protongo.compile.TypeNameDefinition;
 
@@ -74,8 +75,16 @@ public final class ParserContext {
     }
 
     public void waitUntilComplete() {
-        synchronized (threads) {
-            for (Thread thread : threads) {
+        // DO NOT join all threads within synchronized (threads) {...}, because that would block any other
+        // threads from importing any other .proto files (since parse(..) calls threads.add(..).
+        // While we wait below, a thread could start another parser thread
+        List<Thread> threadsSnapshot;
+        while (true) {
+            synchronized (threads) {
+                threadsSnapshot = new ArrayList<>(threads);
+                threads.removeAll( threadsSnapshot );
+            }
+            for (Thread thread : threadsSnapshot) {
                 try {
                     thread.join();
                 } catch (InterruptedException e) {
@@ -111,17 +120,4 @@ public final class ParserContext {
             throw new RuntimeException(e);
         }
     }
-
-    /** Message name => HandlingInstruction */
-    //public final Map<TypeName, HandlingInstruction> instructions= new HashMap<>();
-
-    /*
-    public final List<Parser> parsers = new ArrayList<>();
-
-    public void register (Parser parser) {
-        if (parsers.contains(parser)) {
-            throw new IllegalStateException("Parser already registered.");
-        }
-        parsers.add (parser);
-    }*/
 }
