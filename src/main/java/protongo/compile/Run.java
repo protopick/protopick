@@ -111,7 +111,7 @@ public class Run {
         }
         for (String fileName: compiledSet.inputFileNames) {
             context.parse( fileName );
-            }
+        }
         context.waitUntilComplete(); // that also synchronizes all fields etc.
         compiledSet.compile(context);
         //generator.generate( context, compiledSet );

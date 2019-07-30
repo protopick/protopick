@@ -42,34 +42,34 @@ public class Parser {
     private TypeNamePackage packageName= new TypeNamePackage(Token.newToken(ParserConstants.PACKAGE_TKN), "");
 
     // @For removing the leading comment slashes "//" and any whitespace left of them:
-    private static final Pattern COMMENT_PREFIX= Pattern.compile( "^\\w*//" );
+    //private static final Pattern COMMENT_PREFIX= Pattern.compile( "^\\w*//" );
 
     /* To indicate extra information, add a special (single-line) comment (or several) immediately before
     that related token. TODO check: There must be no empty line between the comment(s) and mainToken.
     See handlingInstruction(Token) and how it's used.
      */
-    private static final Pattern HANDLING_INSTRUCTION= Pattern.compile("GENERATE *DB *SCHEMA");
+    //private static final Pattern HANDLING_INSTRUCTION= Pattern.compile("GENERATE *DB *SCHEMA");
 
     /** If the given mainToken has any special comment(s) immediately before it, then this extracts
      *  its value and registers it. */
     private void addHandlingInstruction(HandlingInstructed instructed, Token mainToken) {
         if (mainToken.specialToken!=null) {
-            String raw= "";
+            String content= "";
             Token special= mainToken.specialToken;
             while (special!=null) {
-                raw= special.image+ raw; // No need to inject a new line in between, because SPECIAL_TOKEN contains a trailing newline
+                if (!content.isEmpty())
+                    content= " " +content;
+                content= special.image.substring(2).trim()+ content;
                 special= mainToken.specialToken;
             }
 
-            Matcher match= HANDLING_INSTRUCTION.matcher(raw);
-            if (match.matches()) {
-                HandlingInstruction instruction= new HandlingInstruction();
-                if(true) throw new Error("TODO");
-                if (instructed.getInstruction()!=null)
-                    instructed.getInstruction().append(instruction);
-                else
-                    instructed.setInstruction(instruction);
-            }
+            //Matcher match= HANDLING_INSTRUCTION.matcher(raw);
+            //if (match.matches())
+            HandlingInstruction instruction= new HandlingInstruction(content);
+            if (instructed.getInstruction()!=null)
+                instructed.getInstruction().append(instruction);
+            else
+                instructed.setInstruction(instruction);
         }
     }
 
@@ -86,11 +86,10 @@ public class Parser {
     private static final ThreadLocal<Boolean> alreadyParsing= new ThreadLocal<Boolean>();
     {
         if( alreadyParsing.get()!=null ) {
-            throw new IllegalStateException("Use one Parser instance per Thread. Call waitUntilComplete() before creating a new instance in the same Thread.");
+            throw new IllegalStateException("Use one Parser instance per Thread. Don't create Parser instance(s) on the 'main' Thread.");
         }
+        alreadyParsing.set(true);
     }
-    /*private final int registerAsParsing= new Object() {
-    }.hashCode();*/
 }
 
 PARSER_END(Parser)
@@ -267,21 +266,26 @@ void ClassPartNoCapture() : {
   If, instead, we're defining a field (which refers to a message/enum), then newTypeToken must be null. The name may contain dots.
   @param parentOrContext Either a parent type (if isNewType), or a type where this field belongs
   (if !isNewType).
-  @param field Only used when isNewType, then we put any handling instruction in the given field.
+  @param field Only used when !isNewType, then we put any handling instruction in the given field.
   */
 TypeName ClassPart(Boolean isNewType, Token newTypeToken, TypeNameDefinition parentOrContext, Field field) : {
     Token leftIdentPart, t; // Part of the type name before the first dot (if any)
     TypeNameDefinition typeNameDefinition= null; // Used only for new  types (not for fields).
     String fieldFullTypeName= ""; // Used only for types of defining fields (not for defining new types).
 } {
-  {if (isNewType!=null && isNewType != (newTypeToken!=null))
+  {if (isNewType != (field==null))
+      throw new IllegalArgumentException("isNewType: " +isNewType+ "doesn't match the fact that field is "
+            +(field==null ? "null." : "non-null."));
+   if (isNewType!=null && isNewType != (newTypeToken!=null))
       throw new IllegalArgumentException("isNewType: " +isNewType+ "doesn't match the fact that newTypeToken is "
             +(newTypeToken==null ? "null." : "non-null."));
   }
   ( leftIdentPart=IdentPart()
     {   fieldFullTypeName= leftIdentPart.image;
-        if (isNewType==Boolean.TRUE)
+        if (isNewType==Boolean.TRUE) {
             typeNameDefinition= new TypeNameDefinition(newTypeToken, packageName, parentOrContext, leftIdentPart.image);
+            // We can't addHandlingInstruction (), because that needs a TypeDefinition instance. That's done outside this funtion.
+        }
         if (isNewType==Boolean.FALSE)
             addHandlingInstruction( field, leftIdentPart );
     }
@@ -388,7 +392,7 @@ void MessagePart(TypeNameDefinition parent) : {
   t=<MESSAGE_TKN>
   typeName=ClassPartDefinition(t, parent)
   { TypeDefinition type= context.addNewDefinition( typeName );
-    //context.typeInstructions.put( type, handlingInstruction(t) );
+    addHandlingInstruction (type, t);
   }
   MessageBranchPart( type )
 }
@@ -486,7 +490,7 @@ void EnumPart(TypeNameDefinition parent) : {
    t= <ENUM_TKN>
    typeNameDefinition= ClassPartDefinition(t, parent)
    { TypeDefinition type= context.addNewDefinition( typeNameDefinition );
-     //context.instructions.put (type, handlingInstruction(t) );
+     addHandlingInstruction (type, t);
      type.isEnum= true;
    }
    <LEFTBRACE_TKN>
