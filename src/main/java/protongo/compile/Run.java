@@ -14,14 +14,14 @@ import protongo.generate.Generator;
 public class Run {
     public static void main(String... args) {
         final protongo.parser.ParserContext context= new protongo.parser.ParserContext();
-        final CompiledSet compiledSet= new CompiledSet();
+        final CompiledSet compiledSet= new CompiledSet(context);
         final Generator generator;
         {
             final Options options = new Options();
             // Option -I and --proto_path is based on `protoc`. You can repeat it, passing a different value each
             // time. It's optional. However, if you do import any files from the same folder as the 'start' file (on
             // which you're invoking this), you must pass '-IPATH' or `--proto_path` for that 'start' folder, too.
-            // Even though proto_path (and some other fields) are required, we don't call .required()
+            // Even though proto_path, files (and some other fields) are required, we don't call .required()
             // here. Otherwise id the user doesn't pass any parameters, parsing fails and we can't show
             // them a help screen. Hence we check the presence of required parameters manually later.
             Option protoPath= Option
@@ -54,8 +54,7 @@ public class Run {
             // together with '-ee extension' or '--export_extension extension' and
             // '-en sand-wich', '-en under_score' or '-en lowercase' (or --export_naming with the same values)
             // When exporting, the output filenames are based on Protoc 'package'. They're not based on the location of the .proto files.
-            Option output= Option.builder("o")
-                    .longOpt("out")
+            Option output= Option.builder("o").longOpt("out")
                     .desc( "Output folder. If not present, using the current directory. This is prefixed "
                            +"in front of each export subpath from 'e' or '--export' parameter(s).")
                     .hasArg().build();
@@ -68,7 +67,10 @@ public class Run {
                     .build();*/
 
             options.addOption("h", "help", false, "Show this help.");
-
+            Option files= Option.builder("f").longOpt("files")
+                      .desc(".proto file(s). Must exist in one of the import path(s).")
+                      .hasArgs().build();
+            options.addOption(files);
             CommandLineParser parser = new DefaultParser();
             try {
                 CommandLine cli = parser.parse(options, args);
@@ -76,7 +78,9 @@ public class Run {
                 compiledSet.inputFileNames= cli.getArgs();
                 if (compiledSet.inputFileNames.length==0 || cli.hasOption('h')) {
                     HelpFormatter formatter = new HelpFormatter();
-                    formatter.printHelp( "gradle run --args='-I path -I another/path options-as-per-below file.proto another-file.proto' OR: java protongo.compile.Run the-same-arguments", options );
+                    String header= "Most options can be repeated, so you can provide multiple values (or pairs of values).";
+                    String footer= "<footer @TODO>";
+                    formatter.printHelp( "gradle run --args='args...' OR: java protongo.compile.Run", header, options, footer, true );
                     return;
                 }
 
@@ -113,7 +117,7 @@ public class Run {
             context.parse( fileName );
         }
         context.waitUntilComplete(); // that also synchronizes all fields etc.
-        compiledSet.compile(context);
+        compiledSet.compile();
         //generator.generate( context, compiledSet );
     }
 }
