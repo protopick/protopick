@@ -94,7 +94,7 @@ public final class ParserContext {
         }
     }
 
-    /** Including the path of the "root" file. This has to be a list, not a set, because `protoc`
+    /** Including the path of the "root" file. This has to be an array, not a set, because `protoc`
      * applies the path folders in a given order. */
     public String includePaths[]= new String[0];
 

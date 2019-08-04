@@ -1,6 +1,8 @@
 package protongo.compile;
 
 import java.io.File;
+import java.util.List;
+import java.util.ArrayList;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -9,56 +11,47 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 // Watch out: Both Apache Commons CLI, and JavaCC-generated code, define class "ParseException"
 import org.apache.commons.cli.ParseException;
-import protongo.generate.Generator;
+import protongo.generate.Plugin;
+import protongo.parser.ParserContext;
 
 public class Run {
     public static void main(String... args) {
-        final protongo.parser.ParserContext context= new protongo.parser.ParserContext();
+        final ParserContext context= new ParserContext();
         final CompiledSet compiledSet= new CompiledSet(context);
-        final Generator generator;
+        final List<Plugin> plugins= new java.util.ArrayList<>();
         {
-            final Options options = new Options();
+            final Options options = new Options(); // options will be shown in alphabetical order, NOT (necessarily) in the same order as added below
             // Option -I and --proto_path is based on `protoc`. You can repeat it, passing a different value each
-            // time. It's optional. However, if you do import any files from the same folder as the 'start' file (on
+            // time. It's optional. However, even if you do import any files from the same folder as the 'start' file (on
             // which you're invoking this), you must pass '-IPATH' or `--proto_path` for that 'start' folder, too.
-            // Even though proto_path, files (and some other fields) are required, we don't call .required()
-            // here. Otherwise id the user doesn't pass any parameters, parsing fails and we can't show
-            // them a help screen. Hence we check the presence of required parameters manually later.
-            Option protoPath= Option
-                    .builder("I")
-                    .longOpt( "proto_path" )
-                    .desc( "Import path. You can pass multiple, one '-I path' or '--proto_path path' per each." )
-                    .hasArg() // Don't use .hasArgs(), because that consumes the rest of args, including the filenames to parse!
-                    .build();
-            options.addOption (protoPath);
+            Option protoPathOpt= Option.builder("I").longOpt( "proto_path" )
+                    .desc( "Import path(s)." )
+                    .hasArgs() // Since we use .hasArgs(), we have to have an option with .haArgs() for the .proto file(s), too. We can't use cli.getArgs() to get the .proto file(s) from the rest of the arguments (after any options), because hasArgs() would consume them (if this were the last option). But this choice makes it more robust. It also requires the commandline parameters to be more intentional.
+                    .required().build();
+            options.addOption (protoPathOpt);
 
-            Option generate= Option
-                    .builder("g")
-                    .longOpt("generate")
-                    .desc( "Generator class. A full, package-qualified name.")
-                    .hasArg()
-                    .build();
-            options.addOption(generate);
+            Option pluginsOpt= Option.builder("p").longOpt("plugin")
+                    .desc( "Plugin(s). Full, package-qualified Java class name(s).")
+                    .hasArgs().required().build();
+            options.addOption(pluginsOpt);
 
-            Option exports= Option
-                    .builder("ep")
-                    .longOpt( "export_pair")
-                    .numberOfArgs(2)
+            Option exportsOpt= Option.builder("ep").longOpt( "export_pair")
+                    .numberOfArgs(2) //@TODO test with hasArgs()
                     .valueSeparator()
                     .desc( "Export pair: package.qualified.type=output/file-with-extension. You can pass multiple, "
                            +"one '-ep pair' or '--export_pair pair' per each type to be exported.")
                     .build();
-            options.addOption(exports);
+            options.addOption(exportsOpt);
 
             // Later: '-ei item' or '--export_item item'
             // together with '-ee extension' or '--export_extension extension' and
             // '-en sand-wich', '-en under_score' or '-en lowercase' (or --export_naming with the same values)
             // When exporting, the output filenames are based on Protoc 'package'. They're not based on the location of the .proto files.
-            Option output= Option.builder("o").longOpt("out")
+            Option outputOpt= Option.builder("o").longOpt("out")
                     .desc( "Output folder. If not present, using the current directory. This is prefixed "
                            +"in front of each export subpath from 'e' or '--export' parameter(s).")
-                    .hasArg().build();
-            options.addOption(output);
+                    .hasArg().required()./*@TODO -> to be optional? */build();
+            options.addOption(outputOpt);
             /* @TODO
             Option instructedOnly= Option
                     .builder("io")
@@ -66,52 +59,73 @@ public class Run {
                     .desc("Whether to generate only for entries that have a 'handling instruction'.")
                     .build();*/
 
-            options.addOption("h", "help", false, "Show this help.");
-            Option files= Option.builder("f").longOpt("files")
+            Option filesOpt= Option.builder("f").longOpt("files")
                       .desc(".proto file(s). Must exist in one of the import path(s).")
-                      .hasArgs().build();
-            options.addOption(files);
+                      .hasArgs().required().build();
+            options.addOption(filesOpt);
+            Option helpOpt= Option.builder("h").longOpt("help").
+                    desc("Show this help.").build();
+            options.addOption(helpOpt);
             CommandLineParser parser = new DefaultParser();
-            try {
-                CommandLine cli = parser.parse(options, args);
-
-                compiledSet.inputFileNames= cli.getArgs();
-                if (compiledSet.inputFileNames.length==0 || cli.hasOption('h')) {
-                    HelpFormatter formatter = new HelpFormatter();
-                    String header= "Most options can be repeated, so you can provide multiple values (or pairs of values).";
-                    String footer= "<footer @TODO>";
-                    formatter.printHelp( "gradle run --args='args...' OR: java protongo.compile.Run", header, options, footer, true );
-                    return;
-                }
-
-                // Don't use proto_path.getValue(), it was null!
-                context.includePaths= cli.getOptionValues('I');
-                //System.out.println( "context.includePaths: " +java.util.Arrays.asList(context.includePaths));
-                if (context.includePaths==null) // if the option is not present, this not an empty array, but null!
-                    throw new IllegalArgumentException("Must pass some -I or --proto_path, even for the folder(s) where the start file(s) are.");
-
-                String generatorClassName=cli.getOptionValue('g');
-                if (generatorClassName==null)
-                    throw new IllegalArgumentException("Must pass an -g or --generator option with a generator's full class name.");
+            CommandLine cli= null;
+            if( args.length>0 ) { // If no args at all, then don't parse and don't show any parsing errors, but show help
                 try {
-                    Class<Generator> generatorClass = (Class<Generator>) Class.forName(generatorClassName);
-                    generator= generatorClass.newInstance();
+                    cli = parser.parse(options, args);
+                    if (cli.getArgs().length>0)
+                        throw new ParseException("Unexpected value(s) at the end: " +cli.getArgList());
+                    compiledSet.inputFileNames = cli.getArgs(); //@TODO move
+                } catch (ParseException exp) {
+                    Options helpOnlyOptions= new Options();
+                    helpOnlyOptions.addOption(helpOpt);
+                    // Alternatively we could use a regex: (\s|^)(-h|--help)(\s|$)
+                    CommandLineParser helpOnlyParser = new DefaultParser();
+                    boolean showParseErrors= false;
+                    try {
+                        CommandLine helpOnlyCli= helpOnlyParser.parse(helpOnlyOptions, args);
+                        // If the user provided only -h or --help, then don't show parsing errors
+                        showParseErrors= !helpOnlyCli.hasOption('h') || helpOnlyCli.getArgs().length>0;
+                    }
+                    catch (ParseException exp2) {
+                        // The user didn't provide -h or --help, or they mixed it with other options
+                        showParseErrors= true;
+                    }
+                    if (showParseErrors)
+                        System.err.println("Error parsing the parameters: " + exp.getMessage());
                 }
-                catch(ClassNotFoundException|InstantiationException|IllegalAccessException e) {
-                    throw new RuntimeException("Couldn't load a generator class " +generatorClassName, e);
-                }
-
-                compiledSet.out= cli.getOptionValue('o');
-                if (compiledSet.out == null)
-                    compiledSet.out = "";
-                else if (!compiledSet.out.endsWith(File.separator))
-                    compiledSet.out += java.io.File.separatorChar;
-
-                compiledSet.exportItems= cli.getOptionProperties("ep"); // Contrary to cli.getOptionValues(String), this is guaranteed non-null
-            } catch (ParseException exp) {
-                System.err.println("Error parsing the parameters: " + exp.getMessage());
+            }
+            if (cli==null || compiledSet.inputFileNames.length==0 || cli.hasOption('h')) {
+                HelpFormatter formatter = new HelpFormatter();
+                String header= "Most options are multi-value. Some accept multiple values for the same option. Others accept one pair per option, but you can repeat the option with different pairs.";
+                String footer= "<footer @TODO>";
+                formatter.printHelp( "gradle run --args='args...' OR: java protongo.compile.Run", header, options, footer, true );
                 return;
             }
+
+            // Don't use proto_path.getValue(), it was null!
+            context.includePaths= cli.getOptionValues('I');
+            //System.out.println( "context.includePaths: " +Arrays.asList(context.includePaths));
+            if (context.includePaths==null) // if the option is not present, this not an empty array, but null!
+                throw new IllegalArgumentException("Must pass some -I or --proto_path, even for the folder(s) where the start file(s) are.");
+
+            String pluginClassNames[]= cli.getOptionValues('p');
+            if (pluginClassNames==null)
+                throw new IllegalArgumentException("Must pass an -p or --plugin option with a generator's full class name.");
+            for (String pluginClassName: pluginClassNames) {
+                try {
+                    Class<protongo.generate.Plugin> pluginClass = (Class<Plugin>) Class
+                            .forName(pluginClassName);
+                    plugins.add( pluginClass.newInstance() );
+                } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+                    throw new RuntimeException("Couldn't load a generator class " + pluginClassName, e);
+                }
+            }
+            compiledSet.out= cli.getOptionValue('o');
+            if (compiledSet.out == null)
+                compiledSet.out = "";
+            else if (!compiledSet.out.endsWith(File.separator))
+                compiledSet.out += File.separatorChar;
+
+            compiledSet.exportItems= cli.getOptionProperties("ep"); // Contrary to cli.getOptionValues(String), this is guaranteed non-null
         }
         for (String fileName: compiledSet.inputFileNames) {
             context.parse( fileName );

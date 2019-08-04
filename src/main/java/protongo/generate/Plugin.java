@@ -8,6 +8,6 @@ import protongo.parser.ParserContext;
  *  Our parser collects types, fields... regardless of whether they're exported or not. Then here
  *  we collect what types, fields... we want to export.
  * */
-public interface Generator {
+public interface Plugin {
     //public void generate (ParserContext context, CompiledSet compiledSet);
 }
