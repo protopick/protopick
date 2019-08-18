@@ -1,7 +1,7 @@
 package protongo.compile;
 
 import java.util.Set;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import protongo.parser.HandlingInstructed;
 import protongo.parser.HandlingInstruction;
 
@@ -11,7 +11,7 @@ import protongo.parser.HandlingInstruction;
 public final class TypeDefinition implements HandlingInstructed {
     public final TypeNameDefinition typeNameDefinition;
     public boolean isEnum;
-    public final Set<Field> fields= new HashSet<>();
+    public final Set<Field> fields= new LinkedHashSet<>();
 
     public TypeDefinition(TypeNameDefinition givenTypeNameDefinition) {
         typeNameDefinition= givenTypeNameDefinition;

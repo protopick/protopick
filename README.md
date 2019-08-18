@@ -14,3 +14,5 @@ For help on the actual arguments, invoke:
 
 For example
 `gradle clean build  run --args='-I proto-test -g protongo.generate.MessagesMongo -ep OuterMost=outer_most.js relative-sub-types.proto'`
+
+We don't support reading from standard input or writing to standard output. If you need that, pass -f /dev/stdin (and --I /dev), and/or -o /dev and have plugin that specifies output filename to be stdout.

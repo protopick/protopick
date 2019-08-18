@@ -15,57 +15,64 @@ import protongo.generate.Plugin;
 import protongo.parser.ParserContext;
 
 public class Run {
+    private static Options createOptions() {
+        final Options options = new Options(); // options will be shown in alphabetical order, case insensitive; NOT (necessarily) in the same order as added below, but let's keep them in the same order below
+        Option exportsOpt= Option.builder("ep").longOpt( "export_pair")
+            .numberOfArgs(2) //@TODO test with hasArgs()
+            .valueSeparator()
+            .desc( "Export pair: package.qualified.type=output/file-with-extension. You can pass multiple, "
+                        +"one '-ep pair' or '--export_pair pair' per each type to be exported.")
+            .build();
+        options.addOption(exportsOpt);
+
+        Option filesOpt= Option.builder("f").longOpt("files")
+           .desc(".proto file(s). Must exist in one of the import path(s).")
+           .hasArgs().required().build();
+        options.addOption(filesOpt);
+
+        Option helpOpt= Option.builder("h").longOpt("help")
+            .desc("Show this help.").build();
+        options.addOption(helpOpt);
+
+        // Option -I and --proto_path is based on `protoc`. You can repeat it, passing a different value each
+        // time. It's optional. However, even if you do import any files from the same folder as the 'start' file (on
+        // which you're invoking this), you must pass '-IPATH' or `--proto_path` for that 'start' folder, too.
+        Option protoPathOpt= Option.builder("I").longOpt( "proto_path" )
+           .desc( "Import path(s)." )
+           .hasArgs() // Since we use .hasArgs(), we have to have an option with .haArgs() for the .proto file(s), too. We can't use cli.getArgs() to get the .proto file(s) from the rest of the arguments (after any options), because hasArgs() would consume them (if this were the last option). But this choice makes it more robust. It also requires the commandline parameters to be more intentional.
+           .required().build();
+        options.addOption (protoPathOpt);
+
+        // Later: '-ei item' or '--export_item item'
+        // together with '-ee extension' or '--export_extension extension' and
+        // '-en sand-wich', '-en under_score' or '-en lowercase' (or --export_naming with the same values)
+        // When exporting, the output filenames are based on Protoc 'package'. They're not based on the location of the .proto files.
+        Option outputOpt= Option.builder("o").longOpt("out")
+            .desc( "Output folder. If not present, using the current directory. This is prefixed "
+                           +"in front of each export subpath from 'e' or '--export' parameter(s).")
+            .hasArg().build();
+        options.addOption(outputOpt);
+
+        Option pluginsOpt= Option.builder("p").longOpt("plugin")
+            .desc( "Plugin(s). Full, package-qualified Java class name(s).")
+            .hasArgs().required().build();
+        options.addOption(pluginsOpt);
+
+        /* @TODO
+        Option instructedOnly= Option
+            .builder("io")
+            .longOpt("instructed_only")
+            .desc("Whether to generate only for entries that have a 'handling instruction'.")
+            .build();*/
+        return options;
+    }
+
     public static void main(String... args) {
         final ParserContext context= new ParserContext();
         final CompiledSet compiledSet= new CompiledSet(context);
-        final List<Plugin> plugins= new java.util.ArrayList<>();
+        final List<Plugin> plugins= new java.util.ArrayList<>(); // Not a Set, because we apply them in order
         {
-            final Options options = new Options(); // options will be shown in alphabetical order, NOT (necessarily) in the same order as added below
-            // Option -I and --proto_path is based on `protoc`. You can repeat it, passing a different value each
-            // time. It's optional. However, even if you do import any files from the same folder as the 'start' file (on
-            // which you're invoking this), you must pass '-IPATH' or `--proto_path` for that 'start' folder, too.
-            Option protoPathOpt= Option.builder("I").longOpt( "proto_path" )
-                    .desc( "Import path(s)." )
-                    .hasArgs() // Since we use .hasArgs(), we have to have an option with .haArgs() for the .proto file(s), too. We can't use cli.getArgs() to get the .proto file(s) from the rest of the arguments (after any options), because hasArgs() would consume them (if this were the last option). But this choice makes it more robust. It also requires the commandline parameters to be more intentional.
-                    .required().build();
-            options.addOption (protoPathOpt);
-
-            Option pluginsOpt= Option.builder("p").longOpt("plugin")
-                    .desc( "Plugin(s). Full, package-qualified Java class name(s).")
-                    .hasArgs().required().build();
-            options.addOption(pluginsOpt);
-
-            Option exportsOpt= Option.builder("ep").longOpt( "export_pair")
-                    .numberOfArgs(2) //@TODO test with hasArgs()
-                    .valueSeparator()
-                    .desc( "Export pair: package.qualified.type=output/file-with-extension. You can pass multiple, "
-                           +"one '-ep pair' or '--export_pair pair' per each type to be exported.")
-                    .build();
-            options.addOption(exportsOpt);
-
-            // Later: '-ei item' or '--export_item item'
-            // together with '-ee extension' or '--export_extension extension' and
-            // '-en sand-wich', '-en under_score' or '-en lowercase' (or --export_naming with the same values)
-            // When exporting, the output filenames are based on Protoc 'package'. They're not based on the location of the .proto files.
-            Option outputOpt= Option.builder("o").longOpt("out")
-                    .desc( "Output folder. If not present, using the current directory. This is prefixed "
-                           +"in front of each export subpath from 'e' or '--export' parameter(s).")
-                    .hasArg().required()./*@TODO -> to be optional? */build();
-            options.addOption(outputOpt);
-            /* @TODO
-            Option instructedOnly= Option
-                    .builder("io")
-                    .longOpt("instructed_only")
-                    .desc("Whether to generate only for entries that have a 'handling instruction'.")
-                    .build();*/
-
-            Option filesOpt= Option.builder("f").longOpt("files")
-                      .desc(".proto file(s). Must exist in one of the import path(s).")
-                      .hasArgs().required().build();
-            options.addOption(filesOpt);
-            Option helpOpt= Option.builder("h").longOpt("help").
-                    desc("Show this help.").build();
-            options.addOption(helpOpt);
+            final Options options= createOptions();
             CommandLineParser parser = new DefaultParser();
             CommandLine cli= null;
             if( args.length>0 ) { // If no args at all, then don't parse and don't show any parsing errors, but show help
@@ -73,10 +80,10 @@ public class Run {
                     cli = parser.parse(options, args);
                     if (cli.getArgs().length>0)
                         throw new ParseException("Unexpected value(s) at the end: " +cli.getArgList());
-                    compiledSet.inputFileNames = cli.getArgs(); //@TODO move
+                    compiledSet.inputFileNames= cli.getOptionValues('f');
                 } catch (ParseException exp) {
                     Options helpOnlyOptions= new Options();
-                    helpOnlyOptions.addOption(helpOpt);
+                    helpOnlyOptions.addOption( options.getOption("h") );
                     // Alternatively we could use a regex: (\s|^)(-h|--help)(\s|$)
                     CommandLineParser helpOnlyParser = new DefaultParser();
                     boolean showParseErrors= false;
@@ -93,7 +100,7 @@ public class Run {
                         System.err.println("Error parsing the parameters: " + exp.getMessage());
                 }
             }
-            if (cli==null || compiledSet.inputFileNames.length==0 || cli.hasOption('h')) {
+            if (cli==null || cli.hasOption('h')) {
                 HelpFormatter formatter = new HelpFormatter();
                 String header= "Most options are multi-value. Some accept multiple values for the same option. Others accept one pair per option, but you can repeat the option with different pairs.";
                 String footer= "<footer @TODO>";
@@ -116,7 +123,7 @@ public class Run {
                             .forName(pluginClassName);
                     plugins.add( pluginClass.newInstance() );
                 } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-                    throw new RuntimeException("Couldn't load a generator class " + pluginClassName, e);
+                    throw new RuntimeException("Couldn't load a plugin class " + pluginClassName, e);
                 }
             }
             compiledSet.out= cli.getOptionValue('o');
