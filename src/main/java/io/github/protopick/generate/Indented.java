@@ -6,22 +6,22 @@ import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Indent {
+public class Indented {
     public static final InheritableThreadLocal<String> INDENT_STEP= new InheritableThreadLocal<>();
 
     private List<Object> parts= new ArrayList<>();
 
-    public Indent() {}
+    public Indented() {}
     private static final Method ADD;
     static {
         try {
-            ADD = Indent.class.getDeclaredMethod("add", Object[].class);
+            ADD = Indented.class.getDeclaredMethod("add", Object[].class);
         }
         catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
     }
-    public Indent(Object... given) {
+    public Indented(Object... given) {
         try {
             ADD.invoke(this, given);
         }
@@ -30,12 +30,12 @@ public class Indent {
         }
     }
 
-    public Indent add(Object... given) {
+    public Indented add(Object... given) {
         parts.addAll( Arrays.asList(given));
         return this;
     }
 
-    public Indent newLine() {
+    public Indented newLine() {
         parts.add( "" );
         return this;
     }
@@ -46,8 +46,8 @@ public class Indent {
         final String innerIndent= indent+indentStep;
         final StringBuilder builder= new StringBuilder();
         for( Object part: parts ) {
-            if( part instanceof Indent ) {
-                builder.append( ( (Indent)part ).toString(innerIndent, indentStep) );
+            if( part instanceof Indented) {
+                builder.append( ( (Indented)part ).toString(innerIndent, indentStep) );
             }
             else {
                 String string= part!=null

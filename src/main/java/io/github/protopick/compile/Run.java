@@ -115,7 +115,7 @@ public class Run {
 
             String pluginClassNames[]= cli.getOptionValues('p');
             if (pluginClassNames==null)
-                throw new IllegalArgumentException("Must pass an -p or --plugin option with a generator's full class name.");
+                throw new IllegalArgumentException("Must pass a -p or --plugin option with a generator's full class name.");
             for (String pluginClassName: pluginClassNames) {
                 try {
                     Class<io.github.protopick.generate.Plugin> pluginClass = (Class<Plugin>) Class
