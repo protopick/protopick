@@ -7,6 +7,7 @@ import java.util.Map;
 
 public class MessagesMongo implements Plugin {
     public void generate (ParserContext context, CompiledSet compiledSet) {
+        // @TODO use compiledSet.exportItems instead
         for (Map.Entry<String, TypeDefinition> entry: context.newTypes.entrySet()) {
 
         }

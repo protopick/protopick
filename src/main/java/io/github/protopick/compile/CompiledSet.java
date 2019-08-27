@@ -3,6 +3,7 @@ package io.github.protopick.compile;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import io.github.protopick.generate.Indented;
 import io.github.protopick.parse.ParserContext;
 
 public final class CompiledSet {
@@ -35,7 +36,7 @@ public final class CompiledSet {
 
             if (context.newTypes.containsKey(itemName)) {
                 final TypeDefinition typeDefinition= context.newTypes.get(itemName);
-                final io.github.protopick.generate.Indented generated= generateOrReuse(typeDefinition);
+                final Indented generated= generateOrReuse(typeDefinition);
                 throw new Error("@TODO");
             }
             else
@@ -44,15 +45,15 @@ public final class CompiledSet {
     }
 
     /** Already compiled items with generated output. */
-    private final Map<TypeNameDefinition, io.github.protopick.generate.Indented> generated = new HashMap<>();
+    private final Map<TypeNameDefinition, Indented> generated = new HashMap<>();
 
-    io.github.protopick.generate.Indented generateOrReuse(TypeDefinition typeDefinition) {
+    Indented generateOrReuse(TypeDefinition typeDefinition) {
         if (!generated.containsKey(typeDefinition.typeNameDefinition))
             generated.put (typeDefinition.typeNameDefinition, generate(typeDefinition));
         return generated.get(typeDefinition.typeNameDefinition);
     }
 
-    io.github.protopick.generate.Indented generate(TypeDefinition typeDefinition) {
+    Indented generate(TypeDefinition typeDefinition) {
         throw new Error("@TODO");
     }
 }

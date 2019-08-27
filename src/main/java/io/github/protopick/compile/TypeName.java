@@ -31,7 +31,7 @@ public abstract class TypeName {
             throw new IllegalArgumentException("givenPackage must not define a new type.");
         if (givenName==null)
             throw new IllegalArgumentException("Type name must not be null.");
-        if( givenName.isEmpty() && use!= io.github.protopick.compile.TypeNameUse.PACKAGE )
+        if( givenName.isEmpty() && use!= TypeNameUse.PACKAGE )
             throw new IllegalArgumentException("Type name (other than a package name) must not be empty.");
         name = givenName;
         if ( (newTypeToken!=null) != use.registersWithToken() )

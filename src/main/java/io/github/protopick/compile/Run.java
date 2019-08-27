@@ -118,7 +118,7 @@ public class Run {
                 throw new IllegalArgumentException("Must pass a -p or --plugin option with a generator's full class name.");
             for (String pluginClassName: pluginClassNames) {
                 try {
-                    Class<io.github.protopick.generate.Plugin> pluginClass = (Class<Plugin>) Class
+                    Class<Plugin> pluginClass = (Class<Plugin>) Class
                             .forName(pluginClassName);
                     plugins.add( pluginClass.newInstance() );
                 } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
