@@ -1,0 +1,17 @@
+Run --------> Parser [, Parser, Parser... - one parser per .proto]
+ParserContext <--/-----<---/--<---/---<---... - one context per all .protos
+- Map<String, TypeDefinition> newTypes
+
+TypeDefinition
+- Set<Field> fields
+- TypeNameDefinition typeNameDefinition
+- HandlingInstruction instruction
+
+Field
+- attribute, isRepeated, isMap
+- TypeDefinition typeDefinition
+- TypeNameOfField typeNameOfField
+- TypeNameOfField typeNameOfMapValues
+- String name
+- ...
+- HandlingInstruction instruction

@@ -40,8 +40,8 @@ public final class ParserContext {
         }
     }
 
-    // We parse each included file in a separate thread. That way waiting for files blocks as little as
-    // possible. That includes the very first (start) file, even if it's just one. That's consistent.
+    // We parse each included file in a separate thread. That minimizes file I/O blocking.
+    // That also applies to the very first (start) file, even if it's just one.
     // Otherwise we'd have to clear Parser.alreadyParsing for the starter thread (in case the
     // client starts another cycle from the same Thread).
     private final List<Thread> threads = Collections.synchronizedList( new ArrayList<Thread>() );

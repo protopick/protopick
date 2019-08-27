@@ -12,7 +12,7 @@ public final class TypeNameDefinition extends TypeName {
         super (TypeNameUse.TYPE_TOP_LEVEL, newTypeToken, null, givenPackage, givenName);
     }
 
-    /** A name of a new type defined by the user. Not that the top (package) level, but as a part of another message.
+    /** A name of a new type defined by the user. Not at the top (package) level, but as a part of another message.
      * @param newTypeToken See another public constructor that accepts a Token and other parameters.
      *  @param givenParent The immediate outer message. It must be non-null; otherwise use the other constructor.
      * */
