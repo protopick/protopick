@@ -1,9 +1,9 @@
-package protongo.compile;
+package io.github.protopick.compile;
 
 import java.util.Arrays;
 import java.util.List;
-import protongo.parser.ParserConstants;
-import protongo.parser.Token;
+import io.github.protopick.parse.ParserConstants;
+import io.github.protopick.parse.Token;
 
 /** This represents a Message, sub-sub...Message, an Enum... */
 public abstract class TypeName {
@@ -31,7 +31,7 @@ public abstract class TypeName {
             throw new IllegalArgumentException("givenPackage must not define a new type.");
         if (givenName==null)
             throw new IllegalArgumentException("Type name must not be null.");
-        if( givenName.isEmpty() && use!= protongo.compile.TypeNameUse.PACKAGE )
+        if( givenName.isEmpty() && use!= io.github.protopick.compile.TypeNameUse.PACKAGE )
             throw new IllegalArgumentException("Type name (other than a package name) must not be empty.");
         name = givenName;
         if ( (newTypeToken!=null) != use.registersWithToken() )

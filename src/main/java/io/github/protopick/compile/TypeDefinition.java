@@ -1,9 +1,9 @@
-package protongo.compile;
+package io.github.protopick.compile;
 
 import java.util.Set;
 import java.util.LinkedHashSet;
-import protongo.parser.HandlingInstructed;
-import protongo.parser.HandlingInstruction;
+import io.github.protopick.parse.HandlingInstructed;
+import io.github.protopick.parse.HandlingInstruction;
 
 /** Information on a user-defined type. Used to generate output.
  *  Any one type is defined in the same file, hence the same Thread. Therefore no need to synchronize.

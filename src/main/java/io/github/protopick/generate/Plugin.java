@@ -1,7 +1,5 @@
-package protongo.generate;
+package io.github.protopick.generate;
 
-import protongo.compile.CompiledSet;
-import protongo.parser.ParserContext;
 
 /** Subject to change.
     A utility class to process the parsed .proto files and to invoke generating the export.

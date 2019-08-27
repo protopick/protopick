@@ -1,6 +1,6 @@
-package protongo.compile;
+package io.github.protopick.compile;
 
-import protongo.parser.Token;
+import io.github.protopick.parse.Token;
 
 /** For new types defined by the user. Not for a reference to  atype used for a field. */
 public final class TypeNameDefinition extends TypeName {

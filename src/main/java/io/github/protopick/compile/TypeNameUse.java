@@ -1,4 +1,4 @@
-package protongo.compile;
+package io.github.protopick.compile;
 
 
 public enum TypeNameUse {

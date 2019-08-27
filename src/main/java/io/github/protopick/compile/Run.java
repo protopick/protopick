@@ -1,8 +1,7 @@
-package protongo.compile;
+package io.github.protopick.compile;
 
 import java.io.File;
 import java.util.List;
-import java.util.ArrayList;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -11,8 +10,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 // Watch out: Both Apache Commons CLI, and JavaCC-generated code, define class "ParseException"
 import org.apache.commons.cli.ParseException;
-import protongo.generate.Plugin;
-import protongo.parser.ParserContext;
+import io.github.protopick.generate.Plugin;
+import io.github.protopick.parse.ParserContext;
 
 public class Run {
     private static Options createOptions() {
@@ -104,7 +103,7 @@ public class Run {
                 HelpFormatter formatter = new HelpFormatter();
                 String header= "Most options are multi-value. Some accept multiple values for the same option. Others accept one pair per option, but you can repeat the option with different pairs.";
                 String footer= "<footer @TODO>";
-                formatter.printHelp( "gradle run --args='args...' OR: java protongo.compile.Run", header, options, footer, true );
+                formatter.printHelp( "gradle run --args='args...' OR: java io.github.protopick", header, options, footer, true );
                 return;
             }
 
@@ -119,7 +118,7 @@ public class Run {
                 throw new IllegalArgumentException("Must pass an -p or --plugin option with a generator's full class name.");
             for (String pluginClassName: pluginClassNames) {
                 try {
-                    Class<protongo.generate.Plugin> pluginClass = (Class<Plugin>) Class
+                    Class<io.github.protopick.generate.Plugin> pluginClass = (Class<Plugin>) Class
                             .forName(pluginClassName);
                     plugins.add( pluginClass.newInstance() );
                 } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {

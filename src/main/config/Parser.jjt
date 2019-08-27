@@ -16,19 +16,19 @@ options {
 }
 
 PARSER_BEGIN(Parser)
-package protongo.parser;
+package io.github.protopick.parse;
 
 import java.util.AbstractMap; // We use AbstractMap.SimpleEntry for typed pairs (2-item tuples)
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import protongo.compile.Field;
-import protongo.compile.TypeDefinition;
-import protongo.compile.TypeName;
-import protongo.compile.TypeNameOfField;
-import protongo.compile.TypeNameDefinition;
-import protongo.compile.TypeNamePackage;
+import io.github.protopick.compile.Field;
+import io.github.protopick.compile.TypeDefinition;
+import io.github.protopick.compile.TypeName;
+import io.github.protopick.compile.TypeNameOfField;
+import io.github.protopick.compile.TypeNameDefinition;
+import io.github.protopick.compile.TypeNamePackage;
 
 /** Protobuf 3 grammar, with support for collecting limited type information. Purpose: Generate a custom schema and similar.
 */
@@ -282,13 +282,13 @@ TypeName ClassPart(Boolean isNewType, Token newTypeToken, TypeNameDefinition par
   }
   ( leftIdentPart=IdentPart()
     {   fieldFullTypeName= leftIdentPart.image;
-        if (isNewType==Boolean.TRUE) {
-            typeNameDefinition= new TypeNameDefinition(newTypeToken, packageName, parentOrContext, leftIdentPart.image);
-            // We can't addHandlingInstruction (), because that needs a TypeDefinition instance. That's done outside this funtion.
-        }
-        if (isNewType==Boolean.FALSE)
-            addHandlingInstruction( field, leftIdentPart );
+    if (isNewType==Boolean.TRUE) {
+        typeNameDefinition= new TypeNameDefinition(newTypeToken, packageName, parentOrContext, leftIdentPart.image);
+        // We can't addHandlingInstruction (), because that needs a TypeDefinition instance. That's done outside this funtion.
     }
+    if (isNewType==Boolean.FALSE)
+        addHandlingInstruction( field, leftIdentPart );
+}
   | CustomOptionsPart()
   )
   (<DOT_TKN>
@@ -392,8 +392,8 @@ void MessagePart(TypeNameDefinition parent) : {
   t=<MESSAGE_TKN>
   typeName=ClassPartDefinition(t, parent)
   { TypeDefinition type= context.addNewDefinition( typeName );
-    addHandlingInstruction (type, t);
-  }
+  addHandlingInstruction (type, t);
+}
   MessageBranchPart( type )
 }
 void MessageBranchPart(TypeDefinition typeDefinition) : {

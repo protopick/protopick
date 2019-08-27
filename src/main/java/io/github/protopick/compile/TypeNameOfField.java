@@ -1,8 +1,8 @@
-package protongo.compile;
+package io.github.protopick.compile;
 
-import protongo.parser.ParserConstants;
-import protongo.parser.ParserContext;
-import protongo.parser.Token;
+import io.github.protopick.parse.ParserConstants;
+import io.github.protopick.parse.ParserContext;
+import io.github.protopick.parse.Token;
 
 /** Indicate a type that a field definition refers to. Not for defining new types/enums. */
 public final class TypeNameOfField extends TypeName {

@@ -1,10 +1,10 @@
-package protongo.compile;
+package io.github.protopick.compile;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import protongo.generate.Indent;
-import protongo.parser.ParserContext;
+import io.github.protopick.generate.Indent;
+import io.github.protopick.parse.ParserContext;
 
 public final class CompiledSet {
     final ParserContext context;

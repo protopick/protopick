@@ -1,4 +1,4 @@
-package protongo.parser;
+package io.github.protopick.parse;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -11,9 +11,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import protongo.compile.Field;
-import protongo.compile.TypeDefinition;
-import protongo.compile.TypeNameDefinition;
+import io.github.protopick.compile.TypeDefinition;
+import io.github.protopick.compile.TypeNameDefinition;
 
 /** Load parser(s) for included file(s).
  * This is not memory efficient. That's not the goal. */

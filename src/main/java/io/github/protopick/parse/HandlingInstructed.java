@@ -1,4 +1,4 @@
-package protongo.parser;
+package io.github.protopick.parse;
 
 
 public interface HandlingInstructed {

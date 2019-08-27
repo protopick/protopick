@@ -1,7 +1,7 @@
-package protongo.compile;
+package io.github.protopick.compile;
 
-import protongo.parser.ParserConstants;
-import protongo.parser.Token;
+import io.github.protopick.parse.ParserConstants;
+import io.github.protopick.parse.Token;
 
 public final class TypeNamePackage extends TypeName {
     /** A name of a package. Usage: Store this instance in `packageName` in JJT grammar.

@@ -1,10 +1,10 @@
-package protongo.compile;
+package io.github.protopick.compile;
 
-import protongo.parser.ParserConstants;
+import io.github.protopick.parse.ParserConstants;
 // We only use Token as a parameter, but we don't store it. Otherwise it would hold on all the previous tokens, too.
-import protongo.parser.HandlingInstructed;
-import protongo.parser.HandlingInstruction;
-import protongo.parser.Token;
+import io.github.protopick.parse.HandlingInstructed;
+import io.github.protopick.parse.HandlingInstruction;
+import io.github.protopick.parse.Token;
 
 public class Field implements HandlingInstructed {
     public static enum Attribute { REQUIRED, OPTIONAL }

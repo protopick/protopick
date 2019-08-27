@@ -1,4 +1,4 @@
-package protongo.generate;
+package io.github.protopick.generate;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
