@@ -138,6 +138,8 @@ public class Run {
         }
         context.waitUntilComplete(); // that also synchronizes all fields etc.
         compiledSet.compile();
-        //generator.generate( context, compiledSet );
+        for (Plugin plugin: plugins) {
+            plugin.generate(context, compiledSet);
+        }
     }
 }

@@ -1,5 +1,7 @@
 package io.github.protopick.generate;
 
+import io.github.protopick.compile.CompiledSet;
+import io.github.protopick.parse.ParserContext;
 
 /** Subject to change.
     A utility class to process the parsed .proto files and to invoke generating the export.
@@ -7,5 +9,5 @@ package io.github.protopick.generate;
  *  we collect what types, fields... we want to export.
  * */
 public interface Plugin {
-    //public void generate (ParserContext context, CompiledSet compiledSet);
+    public void generate (ParserContext context, CompiledSet compiledSet);
 }
