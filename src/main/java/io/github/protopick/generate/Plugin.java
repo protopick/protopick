@@ -1,6 +1,8 @@
 package io.github.protopick.generate;
 
 import io.github.protopick.compile.CompiledSet;
+import io.github.protopick.compile.TypeDefinition;
+import io.github.protopick.generate.Indented;
 import io.github.protopick.parse.ParserContext;
 
 /** Subject to change.
@@ -9,5 +11,5 @@ import io.github.protopick.parse.ParserContext;
  *  we collect what types, fields... we want to export.
  * */
 public interface Plugin {
-    public void generate (ParserContext context, CompiledSet compiledSet);
+    public Indented generate (TypeDefinition typeDefinition, CompiledSet compiledSet);
 }

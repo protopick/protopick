@@ -1,17 +1,20 @@
 package io.github.protopick.compile;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 import io.github.protopick.generate.Indented;
+import io.github.protopick.generate.Plugin;
 import io.github.protopick.parse.ParserContext;
 
 public final class CompiledSet {
-    final ParserContext context;
+    public final ParserContext context;
 
     public String inputFileNames[];
     public String out; // Output directory, if specified. If the specified directory didn't contain a trailing slash (or backslash on Windows), it's added. An empty string if not specified (then use the current folder).
     public Properties exportItems; // Export pair(s), if specified. See option "ep" in Run.java. Guaranteed not to be null, but it may be empty.
+    // @TODO Do Properties preserve the order? IF not, use a LinkedHasHMap
 
     /* package-visible only */
     CompiledSet(ParserContext givenContext) {
@@ -36,7 +39,7 @@ public final class CompiledSet {
 
             if (context.newTypes.containsKey(itemName)) {
                 final TypeDefinition typeDefinition= context.newTypes.get(itemName);
-                final Indented generated= generateOrReuse(typeDefinition);
+                final Indented generated= generateOrReuse(typeDefinition, null/*@TODO plugin*/);
                 throw new Error("@TODO");
             }
             else
@@ -45,15 +48,21 @@ public final class CompiledSet {
     }
 
     /** Already compiled items with generated output. */
-    private final Map<TypeNameDefinition, Indented> generated = new HashMap<>();
+    final Map<TypeDefinition, Indented> generated = new LinkedHashMap<>();
 
-    Indented generateOrReuse(TypeDefinition typeDefinition) {
-        if (!generated.containsKey(typeDefinition.typeNameDefinition))
-            generated.put (typeDefinition.typeNameDefinition, generate(typeDefinition));
-        return generated.get(typeDefinition.typeNameDefinition);
+    void generateAll(Plugin plugin) {
+        // @TODO use this.exportItems instead
+        for (Map.Entry<String, TypeDefinition> entry: context.newTypes.entrySet()) {
+            generateOrReuse (entry.getValue(), plugin);
+        }
     }
 
-    Indented generate(TypeDefinition typeDefinition) {
-        throw new Error("@TODO");
+    public Indented generateOrReuse (TypeDefinition typeDefinition, Plugin plugin) {
+        final Indented existing = generated.get (typeDefinition);
+        if (existing!=null)
+            return existing;
+        final Indented generatedNow= plugin.generate (typeDefinition, this);
+        generated.put (typeDefinition, generatedNow);
+        return generatedNow;
     }
 }

@@ -10,6 +10,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 // Watch out: Both Apache Commons CLI, and JavaCC-generated code, define class "ParseException"
 import org.apache.commons.cli.ParseException;
+import io.github.protopick.generate.Indented;
 import io.github.protopick.generate.Plugin;
 import io.github.protopick.parse.ParserContext;
 
@@ -136,10 +137,16 @@ public class Run {
         for (String fileName: compiledSet.inputFileNames) {
             context.parse( fileName );
         }
+        System.out.println("Parsing");
         context.waitUntilComplete(); // that also synchronizes all fields etc.
-        compiledSet.compile();
+        //compiledSet.compile();
+        //try { Thread.sleep(5000); } catch(InterruptedException e) {throw new Error(e); }
+        System.out.println("Generating");
         for (Plugin plugin: plugins) {
-            plugin.generate(context, compiledSet);
+            compiledSet.generateAll(plugin);
+        }
+        for (Indented indented: compiledSet.generated.values()) {
+            System.out.println( indented ); //@TODO
         }
     }
 }

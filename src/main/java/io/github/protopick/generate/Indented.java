@@ -36,7 +36,7 @@ public class Indented {
     }
 
     public Indented newLine() {
-        parts.add( "" );
+        parts.add( "\n" );
         return this;
     }
 

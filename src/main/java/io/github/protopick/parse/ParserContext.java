@@ -6,7 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +25,7 @@ public final class ParserContext {
      * <br/>Do SYNCHRONIZE any access by running within synchronized(newTypes) {...}.
      * */
     // We only keep a mutable map. Having a non-mutable view meant we'd need to synchronize on one of them only (or to synchronize on the whole ParserContext instance, which is not that granular).
-    public final Map<String, TypeDefinition> newTypes = Collections.synchronizedMap( new HashMap<>() );
+    public final Map<String, TypeDefinition> newTypes = Collections.synchronizedMap( new LinkedHashMap<>() );
 
     /** Create a new TypeDefinition instance for the given name. Register it with the context, and return. */
     public TypeDefinition addNewDefinition( TypeNameDefinition typeName ) {
@@ -58,11 +58,14 @@ public final class ParserContext {
                 Thread thread = new Thread(new Runnable() {
                     public void run() {
                         // We must instantiate a new parser in a new thread
+                        System.out.println("Parser for " +filePath);
                         Parser parser = new Parser(loadFile(filePath));
                         parser.registerWithContext(ParserContext.this);
                         try {
                             parser.Input();
+                            System.out.println("-- parsed");
                         } catch (ParseException e) {
+                            System.err.println( e );
                             throw new RuntimeException(e);
                         }
                     }
@@ -80,6 +83,8 @@ public final class ParserContext {
         List<Thread> threadsSnapshot;
         while (true) {
             synchronized (threads) {
+                if (threads.isEmpty())
+                    return;
                 threadsSnapshot = new ArrayList<>(threads);
                 threads.removeAll( threadsSnapshot );
             }

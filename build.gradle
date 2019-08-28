@@ -6,7 +6,7 @@ plugins {
 }
 
 application {
-    mainClassName = "protongo.compile.Run"
+    mainClassName = "io.github.protopick.compile.Run"
 }
 
 javacc {
@@ -14,7 +14,7 @@ javacc {
     configs {
         template {
             inputFile = file('src/main/config/Parser.jjt')
-            packageName = 'protongo'
+            packageName = 'protopick'
             lookahead = '2'
             forceLaCheck = true
         }
