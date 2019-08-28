@@ -10,9 +10,9 @@ options {
     * */
     STATIC=false;
     SANITY_CHECK=true;
-    //FORCE_LA_CHECK=true;
+    FORCE_LA_CHECK=true;
     DEBUG_LOOKAHEAD=false;
-    //DEBUG_PARSER=true;
+    DEBUG_PARSER=true;
     DEBUG_TOKEN_MANAGER=false;
     //JDK_VERSION="1.8";
 }
@@ -167,6 +167,11 @@ TOKEN :
 | <NUMBER_TKN: "0" | (["-"])?["1"-"9"](["0"-"9"])* | "max">
 | <DOUBLE_TKN: ("0" | (["-"])?["1"-"9"](["0"-"9"])*) "." (["0"-"9"])*>
 | <IDENT_TKN: ["_","a"-"z","A"-"Z"] (["_","a"-"z","A"-"Z","0"-"9"])*>
+// The following has to be collected at Token level, not at Parser level. Why?
+// Because word "service" is a valid part of a dotted identifier, for example:
+// package com.my-company.service.user;
+// Without the following, word "service" became SERVICE_TKN, which then upset the Parser!
+| <DOTTED_IDENT_TKN: ["_","a"-"z","A"-"Z"] ( (["_","a"-"z","A"-"Z","0"-"9"]) (".")? )*>
 }
 
 void Input() : {
@@ -228,6 +233,11 @@ Token IdentPart() : {
 } {
     t=<IDENT_TKN> {return t;}
 }
+Token DottedIdentPart() : {
+  Token t;
+} {
+    t=<DOTTED_IDENT_TKN> {return t;}
+}
 void BraceValuePart() : {
 } {
    <LEFTBRACE_TKN>
@@ -260,7 +270,7 @@ void ClassPartNoCapture() : {
 
 /** @param isNewType It's for an extra validation of the intent:
 * true - if it's for defining new types ("message Abc", "enum Def"...). These may be inner types (like Java inner "static" classes).
-  false - if it's for defining a field only ([repeated] relative.type.path fieldName);
+  false - if it's for defining a field only: ([repeated] relative.type.path fieldName);
   null - indicating that the rule consumer doesn't need TypeName
 * (and that it may have passed null-s as other parameters). This is complex enough, so better to be explicit.
 * @param newTypeToken indicates what kind of 'type' (e.g. "message", "enum"...) this identifier is for - if it's for defining a new
@@ -271,7 +281,7 @@ void ClassPartNoCapture() : {
   @param field Only used when !isNewType, then we put any handling instruction in the given field.
   */
 TypeName ClassPart(Boolean isNewType, Token newTypeToken, TypeNameDefinition parentOrContext, Field field) : {
-    Token leftIdentPart, t; // Part of the type name before the first dot (if any)
+    Token ident; // the type/field name
     TypeNameDefinition typeNameDefinition= null; // Used only for new  types (not for fields).
     String fieldFullTypeName= ""; // Used only for types of defining fields (not for defining new types).
 } {
@@ -282,28 +292,23 @@ TypeName ClassPart(Boolean isNewType, Token newTypeToken, TypeNameDefinition par
       throw new IllegalArgumentException("isNewType: " +isNewType+ "doesn't match the fact that newTypeToken is "
             +(newTypeToken==null ? "null." : "non-null."));
   }
-  ( leftIdentPart=IdentPart()
-    {   fieldFullTypeName= leftIdentPart.image;
+  ( ( ident=DottedIdentPart()
+    | ident=IdentPart()
+    )
+    {   String parts[]= ident.image.split("\\.");
+        fieldFullTypeName= ident.image;
         if (isNewType==Boolean.TRUE) {
-            typeNameDefinition= new TypeNameDefinition(newTypeToken, packageName, parentOrContext, leftIdentPart.image);
+            typeNameDefinition= new TypeNameDefinition(newTypeToken, packageName, parentOrContext, parts[0]);
+            for (int i=1; i<parts.length; i++) {
+                // Composing a dot-separated name. On every iteration, the previously captured typeName becomes the new parent.
+                typeNameDefinition= new TypeNameDefinition(newTypeToken, packageName, typeNameDefinition, parts[i]);
+            }
         }
         if (isNewType==Boolean.FALSE)
-            addHandlingInstruction( field, leftIdentPart );
+            addHandlingInstruction( field, ident );
     }
   | CustomOptionsPart()
   )
-  (<DOT_TKN>
-    ( t=IdentPart()
-        {   if (isNewType!=null) {
-                fieldFullTypeName+= '.' +t.image;
-                if (isNewType)
-                    // Composing a dot-separated name. On every iteration, the previously captured typeName becomes the new parent.
-                    typeNameDefinition= new TypeNameDefinition(newTypeToken, packageName, typeNameDefinition, t.image);
-                }
-        }
-       | CustomOptionsPart()
-       )
-  )*
   {   if (isNewType!=null) {
           if (isNewType) {
               if (!typeNameDefinition.fullName().endsWith(fieldFullTypeName))
@@ -365,15 +370,15 @@ void RpcPart() : {
 } { 
   <RPC_TKN> ClassPartNoCapture()
    <LEFTPAREN_TKN>
-   [(StreamPart())? ClassPartNoCapture()]
+   [ (StreamPart())? ClassPartNoCapture() ]
    <RIGHTPAREN_TKN>
    <RETURNS_TKN>
    
    <LEFTPAREN_TKN>
-   [(StreamPart())? ClassPartNoCapture()]
+   [ (StreamPart())? ClassPartNoCapture() ]
    <RIGHTPAREN_TKN>
    
-   (RpcBracePart()|<SEMI_COLON_TKN>)
+   (RpcBracePart() | <SEMI_COLON_TKN>)
 }
 void StreamPart() : {
 } {     

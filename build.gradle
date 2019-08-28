@@ -15,8 +15,8 @@ javacc {
         template {
             inputFile = file('src/main/config/Parser.jjt')
             packageName = 'protopick'
-            lookahead = '2'
-            forceLaCheck = true
+            //lookahead = '2'
+            //forceLaCheck = true
         }
     }
 }
