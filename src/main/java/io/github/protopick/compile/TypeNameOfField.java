@@ -21,7 +21,7 @@ public final class TypeNameOfField extends TypeName {
     public TypeNameOfField (Token simpleType) {
         super (TypeNameUse.FIELD_PRIMITIVE, null, null, null, simpleType.image);
         if (simpleType.kind!=ParserConstants.TYPE_TKN)
-            throw new IllegalArgumentException("Must pass a built-in type, not: " +simpleType);
+            throw new IllegalArgumentException( "Must pass a built-in type, not: " +simpleType+ " (which was of 'kind' " +simpleType.kind+ ")." );
     }
 
     /* Situation: We're parsing a message. One of its fields refers to another type (a message, enum...).

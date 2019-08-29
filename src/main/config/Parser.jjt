@@ -139,7 +139,7 @@ TOKEN :
 | <MESSAGE_TKN: "message">
 | <ENUM_TKN: "enum">
 | <ONEOF_TKN: "oneof">
-| <GROUP_TKN: "group">
+//| <GROUP_TKN: "group"> // If you have a message with a field called "group", this token would make it fail!
 | <EXTENTIONS_TKN: "extensions">
 | <EXTEND_TKN: "extend">
 | <MAP_TKN: "map">
@@ -462,7 +462,7 @@ Token RepeatedPart() : {
 }
 void GroupPart() : {
 } {
-  <GROUP_TKN> ClassPartNoCapture() <EQUL_TKN> NumberPart()
+  /*<GROUP_TKN>*/ "group" ClassPartNoCapture() <EQUL_TKN> NumberPart()
   MessageBranchPart(null)
 }
 

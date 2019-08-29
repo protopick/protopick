@@ -2,6 +2,8 @@ package io.github.protopick.compile;
 
 import java.io.File;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -145,8 +147,8 @@ public class Run {
         for (Plugin plugin: plugins) {
             compiledSet.generateAll(plugin);
         }
-        for (Indented indented: compiledSet.generated.values()) {
-            System.out.println( indented ); //@TODO
+        for (Map.Entry<TypeDefinition, Indented> entry: compiledSet.generated.entrySet()) {
+            System.out.println( new Indented().add( entry.getKey().typeNameDefinition.name+ ": {", entry.getValue(), "}" ) );//@TODO
         }
     }
 }

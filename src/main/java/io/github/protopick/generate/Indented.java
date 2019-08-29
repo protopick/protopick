@@ -35,26 +35,50 @@ public class Indented {
         return this;
     }
 
-    public Indented newLine() {
-        parts.add( "\n" );
+    public void prepend(Object o) {
+        parts.add( 0, o );
+    }
+
+    /** Add a new line only if there are any previous items in this Indented, and
+     * if the immediate previous item is not an instance of Indented.
+     * However, if the immediate previous item is not an instance of Indented but its toString()
+     * ended with a new line (and any trailing white characters), this method still adds a newline.
+     * */
+    public Indented onNewLine() {
+        if( !parts.isEmpty() && !(parts.get(parts.size()-1) instanceof io.github.protopick.generate.Indented) )
+            parts.add( "\n" );
         return this;
     }
 
-    //public Indent reindent(Object) // This would remove the initial indent from every line
+    public boolean isEmpty() {
+        return parts.isEmpty();
+    }
 
-    public String toString( String indent, String indentStep ) {
-        final String innerIndent= indent+indentStep;
+    //public Indent reindent(Object) // This would remove the initial indent from every line
+    private String toString( String indent, String indentStep ) {
+        final String innerIndent= indentStep+indent;
+        final String newLineAndIndent= "\n" +indent;
         final StringBuilder builder= new StringBuilder();
+
+        boolean lastPartSpecial=false, firstPart=true; //lastPart
         for( Object part: parts ) {
             if( part instanceof Indented) {
+                if (!firstPart)
+                    builder.append("\n");
                 builder.append( ( (Indented)part ).toString(innerIndent, indentStep) );
             }
             else {
                 String string= part!=null
                     ? part.toString()
                     : "null";
-                builder.append( string.replaceAll("\n", indent) );
+                if (lastPartSpecial)
+                    builder.append("\n");
+                if (lastPartSpecial || firstPart)
+                    builder.append( indent );
+                builder.append( string.replace("\n", newLineAndIndent) );
             }
+            lastPartSpecial= part instanceof Indented;
+            firstPart= false;
         }
         return builder.toString();
     }
