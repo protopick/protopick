@@ -42,8 +42,6 @@ public class MessagesMongo implements Plugin {
         //System.out.println("Generate " +typeDefinition.typeNameDefinition.fullName());
 
         if (typeDefinition.isEnum) {
-            System.out.println("--- enum");
-            System.out.println( "Fields: " +typeDefinition.fields);
             Indented typeResult= new Indented();
             typeResult.add( "enum: [");
             boolean firstValue = true;
