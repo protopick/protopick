@@ -12,29 +12,20 @@ public class Indented {
     private List<Object> parts= new ArrayList<>();
 
     public Indented() {}
-    private static final Method ADD;
-    static {
-        try {
-            ADD = Indented.class.getDeclaredMethod("add", Object[].class);
-        }
-        catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        }
-    }
     public Indented(Object... given) {
-        try {
-            ADD.invoke(this, given);
-        }
-        catch (IllegalAccessException|InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
+        add(given);
     }
 
-    public Indented add(Object... given) {
+    public Indented addArray(Object given[]) {
         parts.addAll( Arrays.asList(given));
         return this;
     }
 
+    public Indented add(Object... given) {
+        return addArray(given);
+    }
+
+    /** Not returning this instance, because chaining such calls would be confusing. */
     public void prepend(Object o) {
         parts.add( 0, o );
     }

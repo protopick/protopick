@@ -11,5 +11,7 @@ import io.github.protopick.parse.ParserContext;
  *  we collect what types, fields... we want to export.
  * */
 public interface Plugin {
+    /** Generate per type. If this calls compiledSet.generateOrReuse, then it's indirectly recursive. */
     public Indented generate (TypeDefinition typeDefinition, CompiledSet compiledSet);
+    public Indented wrap( TypeDefinition typeDefinition, Indented generated );
 }

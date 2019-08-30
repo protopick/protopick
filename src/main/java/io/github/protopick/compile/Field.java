@@ -41,4 +41,8 @@ public class Field implements HandlingInstructed {
     private HandlingInstruction instruction;
     public HandlingInstruction getInstruction() { return instruction; }
     public void setInstruction(HandlingInstruction given) { instruction = given; }
+
+    public String toString() {
+        return "Field/entry " +typeDefinition.typeNameDefinition.fullName()+ "." +name;
+    }
 }

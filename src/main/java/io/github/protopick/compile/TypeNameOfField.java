@@ -50,9 +50,14 @@ public final class TypeNameOfField extends TypeName {
                 throw new UnsupportedOperationException(
                         "You can't call resolve() for identifiers that define new types. Only call it for identifiers that define non-simple fields.");
             // @TODO prepopulate: com.google.Empty etc.
-            // 1. Try this,name as a combination of a package name and a (potentially multi-level) type name within that package.
-            if (context.newTypes.containsKey(name))
-                return context.newTypes.get(name);
+            {
+                String inPackageCandidate= fullName(true);
+                // 1. Try this,name as a combination of a package name and a (potentially multi-level) type name within that package.
+                if (context.newTypes.containsKey(inPackageCandidate)) {
+                    System.err.println("Resolved " + this + " to " + context.newTypes.get(inPackageCandidate));
+                    return context.newTypes.get(inPackageCandidate);
+                }
+            }
             //final String packageParts[]= packageName.split(".");
             // TODO TEST: NO SPLITTING
             //String subPackage= packageName;
@@ -64,15 +69,23 @@ public final class TypeNameOfField extends TypeName {
             //final String nameParts[]= parentOrContext.fullName().split(".");
             String subContext = parentOrContext.fullName();
             while (true) {
-                String candidate = subContext + name;
-                if (context.newTypes.containsKey(candidate))
+                final String candidate = subContext+ '.'+ name;
+                if (context.newTypes.containsKey(candidate)) {
                     return context.newTypes.get(candidate);
+                }
                 int i = subContext.lastIndexOf(".");
                 if (i > 0) {
                     subContext = subContext.substring(0, i);
-                } else
-                    return null;
+                } else {
+                    throw new IllegalArgumentException( "Couldn't resolve " +this+ " in package: " +packageName.fullName()+
+                                                                ", with parentOrContext: " +parentOrContext.fullName());
+                }
             }
         }
+    }
+
+    @Override
+    public String toString() {
+        return "TypeNameOfField " +this.name+ " (" +this.fullName(true)+ ")";
     }
 }

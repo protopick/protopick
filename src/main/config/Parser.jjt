@@ -11,8 +11,8 @@ options {
     STATIC=false;
     SANITY_CHECK=true;
     FORCE_LA_CHECK=true;
-    DEBUG_LOOKAHEAD=false;
-    DEBUG_PARSER=true;
+    //DEBUG_LOOKAHEAD=false;
+    //DEBUG_PARSER=true;
     DEBUG_TOKEN_MANAGER=false;
     //JDK_VERSION="1.8";
 }
@@ -398,7 +398,7 @@ void MessagePart(TypeNameDefinition parent) : {
   t=<MESSAGE_TKN>
   typeName=ClassPartDefinition(t, parent)
   { TypeDefinition type= context.addNewDefinition( typeName );
-    System.out.println("MessagePart " +typeName.fullName());
+    //System.out.println("MessagePart " +typeName.fullName());
   addHandlingInstruction (type, t);
 }
   MessageBranchPart( type )
@@ -416,7 +416,7 @@ void MessageBranchPart(TypeDefinition typeDefinition) : {
     |ExtendPart()
     |OptionPart()
     |<SEMI_COLON_TKN>)*
-   <RIGHTBRACE_TKN> {System.out.println("End of message body " +typeDefinition.typeNameDefinition.fullName() );}
+   <RIGHTBRACE_TKN>
 }
 
 void AttributeMemberPart(TypeDefinition typeDefinition) : {
@@ -445,7 +445,6 @@ void MemberPart(/*boolean isOneOf,*/Field field) : {
   name=KeyPart() <EQUL_TKN> number=NumberPart() [BracketPart()] <SEMI_COLON_TKN>
   {field.name= name.image;
    // no adding of handling instruction, as that was already done by ClassOrTypePart()
-   System.out.println( "field " +field.name + " of type " +field.typeNameOfField.name );
   }
 }
 

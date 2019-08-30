@@ -12,7 +12,7 @@ public abstract class TypeName {
         - relevant and if
         - parsed already, or if assigned by the parser as default package.
         Null if not relevant, or not parsed/assigned. */
-    private final TypeNamePackage packageName;
+    final TypeNamePackage packageName;
     public final String name;
     final TypeNameDefinition parentOrContext;
     /** "kind" (token.kind) of newTypeToken passed to the constructor, if it were non-null. Otherwise this is -1. */
@@ -50,7 +50,11 @@ public abstract class TypeName {
     }
 
     public String fullName() {
-        if (use.mayBeRelative())
+        return fullName(false);
+    }
+
+    String fullName(boolean allowReferralType) {
+        if (!allowReferralType && use.mayBeRelative())
             throw new UnsupportedOperationException("Referral type names don't have full name defined.");
         if (parentOrContext != null)
             return parentOrContext.fullName() + '.' + name;

@@ -58,12 +58,12 @@ public final class ParserContext {
                 Thread thread = new Thread(new Runnable() {
                     public void run() {
                         // We must instantiate a new parser in a new thread
-                        System.out.println("Parser for " +filePath);
+                        //System.out.println("Parser for " +filePath);
                         Parser parser = new Parser(loadFile(filePath));
                         parser.registerWithContext(ParserContext.this);
                         try {
                             parser.Input();
-                            System.out.println("-- parsed");
+                            //System.out.println("-- parsed");
                         } catch (ParseException e) {
                             System.err.println( e );
                             throw new RuntimeException(e);

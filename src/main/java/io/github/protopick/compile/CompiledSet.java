@@ -21,7 +21,7 @@ public final class CompiledSet {
         context= givenContext;
     }
 
-    void compile () {//@TODO listExportItems
+    void collectExportItems() {
         if (!exportItems.isEmpty()) {
             for (String itemName : exportItems.stringPropertyNames()) {
                 // Prefix with the output path. (.stringPropertyNames() is a snapshot, so we can change the properties object within this loop)

@@ -14,6 +14,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import io.github.protopick.generate.Indented;
 import io.github.protopick.generate.Plugin;
+import io.github.protopick.generate.Tools;
 import io.github.protopick.parse.ParserContext;
 
 public class Run {
@@ -139,16 +140,17 @@ public class Run {
         for (String fileName: compiledSet.inputFileNames) {
             context.parse( fileName );
         }
-        System.out.println("Parsing");
         context.waitUntilComplete(); // that also synchronizes all fields etc.
-        //compiledSet.compile();
-        //try { Thread.sleep(5000); } catch(InterruptedException e) {throw new Error(e); }
-        System.out.println("Generating");
+        //compiledSet.collectExportItems(); //@TODO
         for (Plugin plugin: plugins) {
             compiledSet.generateAll(plugin);
-        }
-        for (Map.Entry<TypeDefinition, Indented> entry: compiledSet.generated.entrySet()) {
-            System.out.println( new Indented().add( entry.getKey().typeNameDefinition.name+ ": {", entry.getValue(), "}" ) );//@TODO
+
+            for (Map.Entry<TypeDefinition, Indented> entry: compiledSet.generated.entrySet()) {
+                // @TODO Move to the plugin?
+                Indented out= plugin.wrap( entry.getKey(), entry.getValue() );
+                if (!out.isEmpty())
+                    System.out.println( out );
+            }
         }
     }
 }
