@@ -3,24 +3,51 @@ package io.github.protopick.generate;
 import io.github.protopick.compile.CompiledSet;
 import io.github.protopick.compile.Field;
 import io.github.protopick.compile.TypeDefinition;
-import io.github.protopick.generate.Indented;
-import io.github.protopick.parse.ParserContext;
-import java.util.List;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 public class MessagesMongo implements Plugin {
     private static Map<String, Object[]> primitiveTypes = new HashMap<>();
     private static void mapPrimitive( String primitive, Object... output ) {
+        if( primitiveTypes.containsKey(primitive) )
+            throw new IllegalArgumentException("Already set.");
         primitiveTypes.put( primitive, output );
     }
+    // https://developers.google.com/protocol-buffers/docs/proto3#scalar
+    // https://docs.mongodb.com/manual/core/schema-validation/
+    // https://docs.mongodb.com/manual/reference/bson-types/
+    // https://docs.mongodb.com/manual/reference/operator/query/jsonSchema/#jsonschema-keywords
+    // https://json-schema.org/understanding-json-schema/reference/array.html
     static {
-        mapPrimitive( "string", "bsonType: \"string\"" );
+        mapPrimitive( "double", "bsonType: \"double\"" );
+
+        // https://json-schema.org/understanding-json-schema/reference/numeric.html#number says that
+        // JSON type number is analogous to Python float. And Protobuf float translates to Python float:
+        // https://developers.google.com/protocol-buffers/docs/proto3#scalar, hence using JSON number:
+        mapPrimitive( "float", "type: \"number\"" );
+
         mapPrimitive( "int32", "bsonType: \"int\"" );
+        mapPrimitive( "uint32", "bsonType: \"int\"", ",", "\"minimum\": 0" );
+        mapPrimitive( "sint32", "bsonType: \"int\"" );
         mapPrimitive( "int64", "bsonType: \"long\"" );
-        // "uint32", "uint64" -> minimum: 0
+        mapPrimitive( "uint64", "bsonType: \"long\"", ",", "\"minimum\": 0" );
+        mapPrimitive( "sint64", "bsonType: \"long\"" );
+
+        mapPrimitive( "fixed32", "bsonType: \"int\"" );
+        mapPrimitive( "sfixed32", "bsonType: \"int\"" );
+        mapPrimitive( "fixed64", "bsonType: \"long\"" );
+        mapPrimitive( "sfixed64", "bsonType: \"long\"" );
+
         mapPrimitive( "bool", "type: \"boolean\""); // or: bsonType: "bool"
+        mapPrimitive( "string", "bsonType: \"string\"" );
+
+        // https://stackoverflow.com/questions/45106141/error-while-reading-blob-binary-data-from-mongodb-using-java
+        // https://mongodb.github.io/mongo-java-driver/3.7/javadoc/org/bson/types/Binary.html - converts to/from byte[]
+        // https://docs.mongodb.com/manual/reference/limits/#BSON-Document-Size - max 16MB
+        // Protoc translates "bytes" to com.google.protobuf.ByteString, which easily converts to/from byte[]:
+        // https://developers.google.com/protocol-buffers/docs/reference/java/com/google/protobuf/ByteString#toByteArray--
+        // https://developers.google.com/protocol-buffers/docs/reference/java/com/google/protobuf/ByteString#copyFrom-byte:A-
+        mapPrimitive( "bytes", "bsonType: \"binData\"" );
     }
 
     private Object[] generateSingle (Field field, CompiledSet compiledSet) {
@@ -28,13 +55,17 @@ public class MessagesMongo implements Plugin {
             return primitiveTypes.get(field.typeNameOfField.name);
         }
         else {
-            if (field.isMap)
+            if (field.isMap) {
+                // https://stackoverflow.com/questions/17877619/json-schema-with-dynamic-key-field-in-mongodb
                 throw new UnsupportedOperationException("Maps are not supported");
-            TypeDefinition fieldType= field.typeNameOfField.resolve(compiledSet.context);
-            if (fieldType==null) {
-                throw new Error( "Field " +field+ " has unresolved type.");
             }
-            return new Object[] { compiledSet.generateOrReuse(fieldType, this) };
+            else {
+                TypeDefinition fieldType = field.typeNameOfField.resolve(compiledSet.context);
+                if (fieldType == null) {
+                    throw new Error("Field " + field + " has unresolved type.");
+                }
+                return new Object[]{compiledSet.generateOrReuse(fieldType, this)};
+            }
         }
     }
 
@@ -49,12 +80,12 @@ public class MessagesMongo implements Plugin {
                 if (!firstValue)
                     typeResult.add( ", ");
                 firstValue = false;
-                typeResult.add( Tools.asJsonString(value.name) );
+                typeResult.add( Tools.asStringLiteral(value.name) );
             }
             typeResult.add( "]");
             if (typeDefinition.getInstruction()!=null) {
                 typeResult.add( ",\n" );
-                typeResult.add( "description: ").add( Tools.asJsonString(typeDefinition.getInstruction().content) );
+                typeResult.add( "description: ").add( Tools.asStringLiteral(typeDefinition.getInstruction().content) );
             }
             //System.out.println(typeResult);
             return typeResult;
@@ -65,7 +96,7 @@ public class MessagesMongo implements Plugin {
             for (Field field: typeDefinition.fields) {
                 final Indented property= new Indented();
                 if (field.getInstruction()!=null)
-                    property.add( "description: ", Tools.asJsonString(field.getInstruction().content), ",\n" );
+                    property.add("description: ", Tools.asStringLiteral(field.getInstruction().content), ",\n" );
                 {
                     final Indented fieldLevel;
                     if (field.isRepeated) {
@@ -95,7 +126,7 @@ public class MessagesMongo implements Plugin {
 
     public Indented wrap( TypeDefinition typeDefinition, Indented generated ) {
         Indented out= new Indented();
-        out.add( "db.createCollection(" +Tools.asJsonString(typeDefinition.typeNameDefinition.name)+ ", {" );
+        out.add( "db.createCollection(" +Tools.asStringLiteral(typeDefinition.typeNameDefinition.name)+ ", {" );
         out.add( new Indented(
                 "\"capped\": false,\n",
                 "\"validator\": {",

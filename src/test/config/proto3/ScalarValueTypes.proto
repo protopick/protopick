@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package scalar.values.test;
+
 message ScalarValueTypes {
     double work001 = 1;
     float work002 = 2;

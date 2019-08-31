@@ -7,7 +7,7 @@ Based on https://github.com/Tand0/javaccProto.
 
 # Run
 To invoke directly,
- 1. Download  
+ 1. Download apache-commons-cli.jar
  2. Run: `java -cp build/libs/protopick.jar -cp apache-commons-cli.jar io.github.protopick.compile.Run`. That gives you help on the parameters.
 
 To invoke from Gradle, run:
