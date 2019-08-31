@@ -3,6 +3,7 @@ package io.github.protopick.generate;
 import io.github.protopick.compile.CompiledSet;
 import io.github.protopick.compile.Field;
 import io.github.protopick.compile.TypeDefinition;
+import io.github.protopick.parse.ParserContext;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -48,10 +49,13 @@ public class MessagesMongo implements Plugin {
         // https://developers.google.com/protocol-buffers/docs/reference/java/com/google/protobuf/ByteString#toByteArray--
         // https://developers.google.com/protocol-buffers/docs/reference/java/com/google/protobuf/ByteString#copyFrom-byte:A-
         mapPrimitive( "bytes", "bsonType: \"binData\"" );
+        mapPrimitive( ParserContext.ANY, "\"type\": \"object\"" );
+        mapPrimitive( ParserContext.ANY_QUALIFIED, "\"type\": \"object\"" );
     }
 
     private Object[] generateSingle (Field field, CompiledSet compiledSet) {
         if (field.typeNameOfField.use.isPrimitive()) {
+            compiledSet.context.ifAnyValidateImport(field);
             return primitiveTypes.get(field.typeNameOfField.name);
         }
         else {

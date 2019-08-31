@@ -24,7 +24,12 @@ For help on the actual arguments, invoke:
 # Limitations
 Far from complete. It's not complete, but it supports `enum, message, repeated` and basic built-in types (`string, int32, int64, bool`).
 
-For now it fails if there's an external `import` or type (from Google). So comment out imports like `google/protobuf/field_mask.proto` and their usage.
+For now it fails if there's an external `import` or type (from Google), except for
+`google/protobuf/any.proto` (which is OK). So comment out imports like
+`google/protobuf/field_mask.proto` and their usage.
+
+If you define a message called Any, you're in trouble (regardless of whether you import
+`google/protobuf/any.proto` or not).
 
 The plugin API is likely to change.
 

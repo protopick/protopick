@@ -53,7 +53,13 @@ public final class CompiledSet {
     void generateAll(Plugin plugin) {
         // @TODO use this.exportItems instead
         for (Map.Entry<String, TypeDefinition> entry: context.newTypes.entrySet()) {
-            generateOrReuse (entry.getValue(), plugin);
+            if( entry.getValue()!=null ) {
+                generateOrReuse(entry.getValue(), plugin);
+            }
+            else {
+                if( !entry.getKey().equals(ParserContext.ANY_QUALIFIED) )
+                    throw new IllegalStateException( "Missing TypeDefinition for " +entry.getKey() );
+            }
         }
     }
 

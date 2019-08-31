@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import io.github.protopick.compile.Field;
 import io.github.protopick.compile.TypeDefinition;
 import io.github.protopick.compile.TypeNameDefinition;
 
@@ -50,6 +51,17 @@ public final class ParserContext {
      * is reachable through multiple paths (as in includePaths), that's incorrect (as per protoc 3.7.0). */
     private final Set<String> loadedFileNames= Collections.synchronizedSet( new HashSet<>() );
 
+    public static final String ANY="Any", ANY_QUALIFIED="google.protobuf.Any";
+    private static final String ANY_FILE="google/protobuf/any.proto";
+
+    /** If the field is of type Any, or google.protobuf.Any, then validate that google/protobuf/any.proto was imported. */
+    public void ifAnyValidateImport(Field field) {
+        if( (field.typeNameOfField.name.equals("Any") || field.typeNameOfField.name
+                .equals("google.protobuf.Any"))
+        && !newTypes.containsKey(ANY_QUALIFIED) )
+            throw new IllegalStateException("Must import " +ANY_FILE+ " in order to use type " +field.typeNameOfField.name);
+    }
+
     public void parse (String filePath) {
         synchronized (loadedFileNames) {
             if (!loadedFileNames.contains(filePath)) {
@@ -57,16 +69,24 @@ public final class ParserContext {
 
                 Thread thread = new Thread(new Runnable() {
                     public void run() {
-                        // We must instantiate a new parser in a new thread
-                        //System.out.println("Parser for " +filePath);
-                        Parser parser = new Parser(loadFile(filePath));
-                        parser.registerWithContext(ParserContext.this);
-                        try {
-                            parser.Input();
-                            //System.out.println("-- parsed");
-                        } catch (ParseException e) {
-                            System.err.println( e );
-                            throw new RuntimeException(e);
+                        if( filePath.equals(ANY_FILE) ) {
+                            // Intentionally null, since it's not supposed to be used from here. This
+                            // only indicates that type Any is available. However, its handling is done
+                            // by TYPE_TKN token, and the plugin must handle like scalar types.
+                            newTypes.put( ANY_QUALIFIED, null );
+                        }
+                        else {
+                            // We must instantiate a new parser in a new thread
+                            //System.out.println("Parser for " +filePath);
+                            Parser parser = new Parser(loadFile(filePath));
+                            parser.registerWithContext(ParserContext.this);
+                            try {
+                                parser.Input();
+                                //System.out.println("-- parsed");
+                            } catch (ParseException e) {
+                                System.err.println(e);
+                                throw new RuntimeException(e);
+                            }
                         }
                     }
                 });
