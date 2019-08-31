@@ -101,12 +101,13 @@ public class MessagesMongo implements Plugin {
             for (Field field: typeDefinition.fields) {
                 final Indented property= new Indented();
                 if (field.getInstruction()!=null)
-                    property.add("\"description\": ", Tools.asStringLiteral(field.getInstruction().content), ",\n" );
+                    property.add("\"description\": ", Tools.asStringLiteral(field.getInstruction().content), "," );
                 {
                     final Indented fieldLevel;
                     if (field.isRepeated) {
-                        property.add( "\"type\": \"array\",\n");
-                        property.add( "\"items\": {");
+                        property.add( "\n" );
+                        property.add( "\"type\": \"array\",\n" );
+                        property.add( "\"items\": {" );
                         fieldLevel= new Indented();
                         property.add( fieldLevel );
                         property.add( "}");

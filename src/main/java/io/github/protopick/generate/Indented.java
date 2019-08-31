@@ -34,6 +34,8 @@ public class Indented {
      * if the immediate previous item is not an instance of Indented.
      * However, if the immediate previous item is not an instance of Indented but its toString()
      * ended with a new line (and any trailing white characters), this method still adds a newline.
+     * Don't call if the next item to be added may be Indented, otherwise you'll have two new lines.
+     * Beware: If you call prepend(Object) later, the previous effect of onNewLine() will NOT be adjusted.
      * */
     public Indented onNewLine() {
         if( !parts.isEmpty() && !(parts.get(parts.size()-1) instanceof io.github.protopick.generate.Indented) )
