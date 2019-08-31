@@ -20,27 +20,27 @@ public class MessagesMongo implements Plugin {
     // https://docs.mongodb.com/manual/reference/operator/query/jsonSchema/#jsonschema-keywords
     // https://json-schema.org/understanding-json-schema/reference/array.html
     static {
-        mapPrimitive( "double", "bsonType: \"double\"" );
+        mapPrimitive( "double", "\"bsonType\": \"double\"" );
 
         // https://json-schema.org/understanding-json-schema/reference/numeric.html#number says that
         // JSON type number is analogous to Python float. And Protobuf float translates to Python float:
         // https://developers.google.com/protocol-buffers/docs/proto3#scalar, hence using JSON number:
-        mapPrimitive( "float", "type: \"number\"" );
+        mapPrimitive( "float", "\"type\": \"number\"" );
 
-        mapPrimitive( "int32", "bsonType: \"int\"" );
-        mapPrimitive( "uint32", "bsonType: \"int\"", ",", "\"minimum\": 0" );
-        mapPrimitive( "sint32", "bsonType: \"int\"" );
-        mapPrimitive( "int64", "bsonType: \"long\"" );
-        mapPrimitive( "uint64", "bsonType: \"long\"", ",", "\"minimum\": 0" );
-        mapPrimitive( "sint64", "bsonType: \"long\"" );
+        mapPrimitive( "int32", "\"bsonType\": \"int\"" );
+        mapPrimitive( "uint32", "\"bsonType\": \"int\"", ",", "\"minimum\": 0" );
+        mapPrimitive( "sint32", "\"bsonType\": \"int\"" );
+        mapPrimitive( "int64", "\"bsonType\": \"long\"" );
+        mapPrimitive( "uint64", "\"bsonType\": \"long\"", ",", "\"minimum\": 0" );
+        mapPrimitive( "sint64", "\"bsonType\": \"long\"" );
 
-        mapPrimitive( "fixed32", "bsonType: \"int\"" );
-        mapPrimitive( "sfixed32", "bsonType: \"int\"" );
-        mapPrimitive( "fixed64", "bsonType: \"long\"" );
-        mapPrimitive( "sfixed64", "bsonType: \"long\"" );
+        mapPrimitive( "fixed32", "\"bsonType\": \"int\"" );
+        mapPrimitive( "sfixed32", "\"bsonType\": \"int\"" );
+        mapPrimitive( "fixed64", "\"bsonType\": \"long\"" );
+        mapPrimitive( "sfixed64", "\"bsonType\": \"long\"" );
 
-        mapPrimitive( "bool", "type: \"boolean\""); // or: bsonType: "bool"
-        mapPrimitive( "string", "bsonType: \"string\"" );
+        mapPrimitive( "bool", "\"type\": \"boolean\""); // or: bsonType: "bool"
+        mapPrimitive( "string", "\"bsonType\": \"string\"" );
 
         // https://stackoverflow.com/questions/45106141/error-while-reading-blob-binary-data-from-mongodb-using-java
         // https://mongodb.github.io/mongo-java-driver/3.7/javadoc/org/bson/types/Binary.html - converts to/from byte[]
@@ -48,7 +48,7 @@ public class MessagesMongo implements Plugin {
         // Protoc translates "bytes" to com.google.protobuf.ByteString, which easily converts to/from byte[]:
         // https://developers.google.com/protocol-buffers/docs/reference/java/com/google/protobuf/ByteString#toByteArray--
         // https://developers.google.com/protocol-buffers/docs/reference/java/com/google/protobuf/ByteString#copyFrom-byte:A-
-        mapPrimitive( "bytes", "bsonType: \"binData\"" );
+        mapPrimitive( "bytes", "\"bsonType\": \"binData\"" );
         mapPrimitive( ParserContext.ANY, "\"type\": \"object\"" );
         mapPrimitive( ParserContext.ANY_QUALIFIED, "\"type\": \"object\"" );
     }
@@ -73,12 +73,14 @@ public class MessagesMongo implements Plugin {
         }
     }
 
-    public Indented generate (TypeDefinition typeDefinition, CompiledSet compiledSet) {
+    @Override public Indented generate (TypeDefinition typeDefinition, CompiledSet compiledSet) {
         //System.out.println("Generate " +typeDefinition.typeNameDefinition.fullName());
 
         if (typeDefinition.isEnum) {
-            Indented typeResult= new Indented();
-            typeResult.add( "enum: [");
+            // Do NOT add "description" based on typeDefinition.getInstruction().content. Why? Because the
+            // field currently being defined already had "description" generated in the grandparent function call.
+            Indented typeResult= Indented.newSameIndent();
+            typeResult.add( "\"enum\": [");
             boolean firstValue = true;
             for (Field value: typeDefinition.fields) {
                 if (!firstValue)
@@ -87,10 +89,6 @@ public class MessagesMongo implements Plugin {
                 typeResult.add( Tools.asStringLiteral(value.name) );
             }
             typeResult.add( "]");
-            if (typeDefinition.getInstruction()!=null) {
-                typeResult.add( ",\n" );
-                typeResult.add( "description: ").add( Tools.asStringLiteral(typeDefinition.getInstruction().content) );
-            }
             //System.out.println(typeResult);
             return typeResult;
         }
@@ -102,14 +100,14 @@ public class MessagesMongo implements Plugin {
                 final Indented property= new Indented();
                 if (field.getInstruction()!=null)
                     property.add("\"description\": ", Tools.asStringLiteral(field.getInstruction().content), "," );
+                    property.onNewLine(); //property.add( "\n" );
                 {
                     final Indented fieldLevel;
                     if (field.isRepeated) {
-                        property.add( "\n" );
                         property.add( "\"type\": \"array\",\n" );
                         property.add( "\"items\": {" );
-                        fieldLevel= new Indented();
-                        property.add( fieldLevel );
+                            fieldLevel= new Indented();
+                            property.add( fieldLevel );
                         property.add( "}");
                     } else {
                         fieldLevel = property;
@@ -117,8 +115,8 @@ public class MessagesMongo implements Plugin {
                     fieldLevel.addArray( generateSingle(field, compiledSet) );
                 }
                 properties.add(",\n");
-                properties.add( field.name, ": {");
-                properties.add( property );
+                properties.add( Tools.asStringLiteral(field.name), ": {");
+                    properties.add( property );
                 properties.add( "}" );
             }
             Indented typeResult= new Indented();
@@ -137,7 +135,7 @@ public class MessagesMongo implements Plugin {
         Indented out= new Indented();
         out.add( "db.createCollection(" +Tools.asStringLiteral(typeDefinition.typeNameDefinition.name)+ ", {" );
         out.add( new Indented(
-                "\"capped\": false,\n",
+                "\"capped\": false,\n", //@TODO false is default -do we need this?
                 "\"validator\": {",
                 new Indented(
                         "\"$jsonSchema\": {",

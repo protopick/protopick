@@ -10,10 +10,19 @@ public class Indented {
     public static final InheritableThreadLocal<String> INDENT_STEP= new InheritableThreadLocal<>();
 
     private List<Object> parts= new ArrayList<>();
+    /** Whether this container has the same indent as its immediate parent (if any). */
+    private boolean sameIndent= false;
 
     public Indented() {}
     public Indented(Object... given) {
         add(given);
+    }
+    /** This creates a new instance with the same indent as its immediate parent (if any).
+     * There's no ability to make an existing instance have the same indent later, as that would allow the code to be confusing. */
+    public static Indented newSameIndent() {
+        Indented result= new Indented();
+        result.sameIndent= true;
+        return result;
     }
 
     public Indented addArray(Object given[]) {
@@ -30,17 +39,16 @@ public class Indented {
         parts.add( 0, o );
     }
 
+    private static final Object SEPARATOR= new Object();
+
     /** Add a new line only if there are any previous items in this Indented, and
      * if the immediate previous item is not an instance of Indented.
      * However, if the immediate previous item is not an instance of Indented but its toString()
      * ended with a new line (and any trailing white characters), this method still adds a newline.
-     * Don't call if the next item to be added may be Indented, otherwise you'll have two new lines.
-     * Beware: If you call prepend(Object) later, the previous effect of onNewLine() will NOT be adjusted.
+     * If the next item is Indented, or if you call onNewLine() multiple times, that all generates one new line only.
      * */
     public Indented onNewLine() {
-        if( !parts.isEmpty() && !(parts.get(parts.size()-1) instanceof io.github.protopick.generate.Indented) )
-            parts.add( "\n" );
-        return this;
+        return add(SEPARATOR);
     }
 
     public boolean isEmpty() {
@@ -48,29 +56,37 @@ public class Indented {
     }
 
     //public Indent reindent(Object) // This would remove the initial indent from every line
-    private String toString( String indent, String indentStep ) {
+    private String toString( final String parentIdent, final String suggestedIndent, final String indentStep ) {
+        final String indent= sameIndent
+            ? parentIdent
+            : suggestedIndent;
         final String innerIndent= indentStep+indent;
         final String newLineAndIndent= "\n" +indent;
         final StringBuilder builder= new StringBuilder();
 
-        boolean lastPartSpecial=false, firstPart=true; //lastPart
+        boolean lastPartIndented=false, lastPartSeparator=false, firstPart=true; //lastPart
         for( Object part: parts ) {
-            if( part instanceof Indented) {
-                if (!firstPart)
-                    builder.append("\n");
-                builder.append( ( (Indented)part ).toString(innerIndent, indentStep) );
+            if( part==SEPARATOR ) {
+                if( !lastPartSeparator )
+                    builder.append('\n');
+            }
+            else if( part instanceof Indented) {
+                if( !firstPart && !lastPartSeparator )
+                    builder.append('\n');
+                builder.append( ( (Indented)part ).toString(indent, innerIndent, indentStep) );
             }
             else {
                 String string= part!=null
                     ? part.toString()
                     : "null";
-                if (lastPartSpecial)
-                    builder.append("\n");
-                if (lastPartSpecial || firstPart)
+                if (lastPartIndented) // Because Indented doesn't append a new line at its end
+                    builder.append('\n');
+                if (lastPartIndented || lastPartSeparator || firstPart)
                     builder.append( indent );
                 builder.append( string.replace("\n", newLineAndIndent) );
             }
-            lastPartSpecial= part instanceof Indented;
+            lastPartIndented= part instanceof Indented;
+            lastPartSeparator= part==SEPARATOR;
             firstPart= false;
         }
         return builder.toString();
@@ -79,6 +95,6 @@ public class Indented {
     public String toString() {
         if (INDENT_STEP.get()==null)
             INDENT_STEP.set ("    ");
-        return toString("", INDENT_STEP.get());
+        return toString("", "", INDENT_STEP.get());
     }
 }
