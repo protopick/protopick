@@ -96,11 +96,12 @@ public class MessagesMongo implements Plugin {
         }
         else { // Message @TODO description of the message itself?
             Indented properties= new Indented();
+            properties.add( "\"_id\": {\"bsonType\": \"objectId\"}" );
 
             for (Field field: typeDefinition.fields) {
                 final Indented property= new Indented();
                 if (field.getInstruction()!=null)
-                    property.add("description: ", Tools.asStringLiteral(field.getInstruction().content), ",\n" );
+                    property.add("\"description\": ", Tools.asStringLiteral(field.getInstruction().content), ",\n" );
                 {
                     final Indented fieldLevel;
                     if (field.isRepeated) {
@@ -114,14 +115,17 @@ public class MessagesMongo implements Plugin {
                     }
                     fieldLevel.addArray( generateSingle(field, compiledSet) );
                 }
-                if (!properties.isEmpty())
-                    properties.add(",\n");
+                properties.add(",\n");
                 properties.add( field.name, ": {");
                 properties.add( property );
                 properties.add( "}" );
             }
             Indented typeResult= new Indented();
-            typeResult.add( "bsonType: \"object\",", "\n", "properties: {" );
+            // https://docs.mongodb.com/manual/reference/operator/query/jsonSchema/#jsonschema-keywords > additionalProperties
+            // https://stackoverflow.com/questions/48491556/mongodb-jsonschema-validation-additionalproperties
+            typeResult.add( "\"bsonType\": \"object\",\n" );
+            typeResult.add( "\"additionalProperties\": false,\n" );
+            typeResult.add( "\"properties\": {" );
             typeResult.add( properties );
             typeResult.onNewLine().add( "}" );
             return typeResult; // @OTOD outside: prepend with typeDefinition.typeNameDefinition.name
