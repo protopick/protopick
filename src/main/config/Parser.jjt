@@ -551,18 +551,18 @@ void OneOfPart(TypeDefinition typeDefinition) : {
 }
 
 void MapPart(Field field) : {
-  Token name;
+  Token map, name;
   field.isMap= true;
 } {
 
-  <MAP_TKN>
+  map= <MAP_TKN>
   <LESSTHAN_TKN>
    field.typeNameOfField= ClassOrTypePart(field)
    <COMMA_TKN>
    field.typeNameOfMapValues= ClassOrTypePart(field)
   <GRATETHAN_TKN>
   name= KeyPart() <EQUL_TKN> NumberPart() <SEMI_COLON_TKN>
-  {//@TODO handling instruction
+  {addHandlingInstruction( field, map );
    field.name= name.image;}
 }
 

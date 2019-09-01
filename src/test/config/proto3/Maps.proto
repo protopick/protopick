@@ -1,5 +1,15 @@
 syntax = "proto3";
 
-message SampleMessage {
+package test;
+
+message Project {
+  // Title
+  string title = 1;
+  // Estimate
+  int32 estimate_person_hours = 2;
+}
+
+message Projects {
+  // Project by title
   map<string, Project> projects = 3;
 }

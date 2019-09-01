@@ -5,6 +5,8 @@ import io.github.protopick.compile.Field;
 import io.github.protopick.compile.TypeDefinition;
 import io.github.protopick.parse.ParserContext;
 import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 
 public class MessagesMongo implements Plugin {
@@ -28,10 +30,10 @@ public class MessagesMongo implements Plugin {
         mapPrimitive( "float", "\"type\": \"number\"" );
 
         mapPrimitive( "int32", "\"bsonType\": \"int\"" );
-        mapPrimitive( "uint32", "\"bsonType\": \"int\"", ",", "\"minimum\": 0" );
+        mapPrimitive( "uint32", "\"bsonType\": \"int\"", ",", "\n\"minimum\": 0" );
         mapPrimitive( "sint32", "\"bsonType\": \"int\"" );
         mapPrimitive( "int64", "\"bsonType\": \"long\"" );
-        mapPrimitive( "uint64", "\"bsonType\": \"long\"", ",", "\"minimum\": 0" );
+        mapPrimitive( "uint64", "\"bsonType\": \"long\"", ",", "\n\"minimum\": 0" );
         mapPrimitive( "sint64", "\"bsonType\": \"long\"" );
 
         mapPrimitive( "fixed32", "\"bsonType\": \"int\"" );
@@ -59,16 +61,37 @@ public class MessagesMongo implements Plugin {
             return primitiveTypes.get(field.typeNameOfField.name);
         }
         else {
-            if (field.isMap) {
+            TypeDefinition fieldOrKeyType = field.typeNameOfField.resolve(compiledSet.context);
+            if( fieldOrKeyType==null ) {
+                throw new Error("Field " + field + " has unresolved type"
+                                        +(field.isMap ? " of keys: " : ": ")
+                                        +fieldOrKeyType.typeNameDefinition.name );
+            }
+            if (field.isMap) {throw new Error
+                TypeDefinition valueType = field.typeNameOfMapValues.resolve(compiledSet.context);
+                if( fieldOrKeyType==null ) {
+                    throw new Error("Field " + field + " has unresolved type of values: " +fieldOrKeyType.typeNameDefinition.name );
+                }
                 // https://stackoverflow.com/questions/17877619/json-schema-with-dynamic-key-field-in-mongodb
-                throw new UnsupportedOperationException("Maps are not supported");
+                final List<Object> result= new ArrayList<>();
+                result.add( "\"type\": \"array\"" );
+                result.add( "\"items\": {" );
+                    Indented pair= new Indented();
+                    pair.add( "\"bsonType\": \"object\",\n" );
+                    pair.add( "\"additionalProperties\": false,\n" );
+                    pair.add( "\"key\": {" );
+                        pair.add( compiledSet.generateOrReuse(fieldOrKeyType, this) );
+                    pair.add( "},\n" );
+                    pair.add( "\"value\": {" );
+                        pair.add( compiledSet.generateOrReuse(valueType, this) );
+                    pair.add( "}\n" );
+                    result.add( pair );
+                result.add( "}");
+                return result.toArray();
+                //throw new UnsupportedOperationException("Maps are not supported");
             }
             else {
-                TypeDefinition fieldType = field.typeNameOfField.resolve(compiledSet.context);
-                if (fieldType == null) {
-                    throw new Error("Field " + field + " has unresolved type.");
-                }
-                return new Object[]{compiledSet.generateOrReuse(fieldType, this)};
+                return new Object[]{ compiledSet.generateOrReuse(fieldOrKeyType, this) };
             }
         }
     }
@@ -94,19 +117,21 @@ public class MessagesMongo implements Plugin {
         }
         else { // Message @TODO description of the message itself?
             Indented properties= new Indented();
+            // @TODO top level only
             properties.add( "\"_id\": {\"bsonType\": \"objectId\"}" );
 
             for (Field field: typeDefinition.fields) {
                 final Indented property= new Indented();
-                if (field.getInstruction()!=null)
-                    property.add("\"description\": ", Tools.asStringLiteral(field.getInstruction().content), "," );
+                if (field.getInstruction()!=null) {//@TODO consider "title" instead
+                    property.add("\"description\": ", Tools.asStringLiteral(field.getInstruction().content), ",");
                     property.onNewLine(); //property.add( "\n" );
+                }
                 {
                     final Indented fieldLevel;
                     if (field.isRepeated) {
                         property.add( "\"type\": \"array\",\n" );
+                        fieldLevel= new Indented();
                         property.add( "\"items\": {" );
-                            fieldLevel= new Indented();
                             property.add( fieldLevel );
                         property.add( "}");
                     } else {
