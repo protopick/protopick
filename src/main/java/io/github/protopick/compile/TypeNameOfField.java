@@ -52,7 +52,7 @@ public final class TypeNameOfField extends TypeName {
             // @TODO prepopulate: com.google.Empty etc.
             {
                 String inPackageCandidate= fullName(true);
-                // 1. Try this,name as a combination of a package name and a (potentially multi-level) type name within that package.
+                // 1. Try this name as a combination of a package name and a (potentially multi-level) type name within that package.
                 if (context.newTypes.containsKey(inPackageCandidate)) {
                     System.err.println("Resolved " + this + " to " + context.newTypes.get(inPackageCandidate));
                     return context.newTypes.get(inPackageCandidate);
@@ -86,6 +86,6 @@ public final class TypeNameOfField extends TypeName {
 
     @Override
     public String toString() {
-        return "TypeNameOfField " +this.name+ " (" +this.fullName(true)+ ")";
+        return "TypeNameOfField " +this.name+ " (" +this.fullName()+ ")";
     }
 }

@@ -14,6 +14,7 @@ import java.util.Set;
 import io.github.protopick.compile.Field;
 import io.github.protopick.compile.TypeDefinition;
 import io.github.protopick.compile.TypeNameDefinition;
+import io.github.protopick.compile.TypeNameOfField;
 
 /** Load parser(s) for included file(s).
  * This is not memory efficient. That's not the goal. */
@@ -55,11 +56,15 @@ public final class ParserContext {
     private static final String ANY_FILE="google/protobuf/any.proto";
 
     /** If the field is of type Any, or google.protobuf.Any, then validate that google/protobuf/any.proto was imported. */
-    public void ifAnyValidateImport(Field field) {
-        if( (field.typeNameOfField.name.equals("Any") || field.typeNameOfField.name
+    public void ifAnyValidateImport( TypeNameOfField typeNameOfField ) {
+        if( (typeNameOfField.name.equals("Any") || typeNameOfField.name
                 .equals("google.protobuf.Any"))
-        && !newTypes.containsKey(ANY_QUALIFIED) )
-            throw new IllegalStateException("Must import " +ANY_FILE+ " in order to use type " +field.typeNameOfField.name);
+        && !newTypes.containsKey(ANY_QUALIFIED) ) {
+            String parentOrContextOrPackageName= typeNameOfField.parentOrContextOrPackageName();
+            throw new IllegalStateException(
+                    "Must import " + ANY_FILE + " in order to use type " + typeNameOfField.name
+                            +(parentOrContextOrPackageName!=null ? " in " +parentOrContextOrPackageName : "")+ ".");
+        }
     }
 
     public void parse (String filePath) {

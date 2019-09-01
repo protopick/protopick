@@ -49,19 +49,24 @@ public abstract class TypeName {
             throw new IllegalArgumentException("Top-level type must be a message, or an enum, but not a " +newTypeToken.image);
     }
 
-    public String fullName() {
-        return fullName(false);
+    public String fullName() { return fullName( false ); }
+
+    public String fullName( boolean allowReferralType ) {
+        if( use.mayBeRelative() && !allowReferralType )
+            throw new UnsupportedOperationException("Referral type names don't have full name defined.");
+        String parentOrContextOrPackageName= parentOrContextOrPackageName();
+        return parentOrContextOrPackageName!=null
+            ? parentOrContextOrPackageName+ "." +name
+            : name;
     }
 
-    String fullName(boolean allowReferralType) {
-        if (!allowReferralType && use.mayBeRelative())
-            throw new UnsupportedOperationException("Referral type names don't have full name defined.");
-        if (parentOrContext != null)
-            return parentOrContext.fullName() + '.' + name;
-        else if (packageName != null)
-            return packageName.name + '.' + name;
+    public String parentOrContextOrPackageName() {
+        if( parentOrContext!=null )
+            return parentOrContext.fullName();
+        else if( packageName!=null )
+            return packageName.name;
         else
-            return name;
+            return null;
     }
 
     /** Equality is based on fullName(). That way you can create an instance with a dot-separated multi-level name in one go,

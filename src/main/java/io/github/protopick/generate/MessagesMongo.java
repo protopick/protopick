@@ -3,6 +3,7 @@ package io.github.protopick.generate;
 import io.github.protopick.compile.CompiledSet;
 import io.github.protopick.compile.Field;
 import io.github.protopick.compile.TypeDefinition;
+import io.github.protopick.compile.TypeNameOfField;
 import io.github.protopick.parse.ParserContext;
 import java.util.HashMap;
 import java.util.List;
@@ -55,23 +56,31 @@ public class MessagesMongo implements Plugin {
         mapPrimitive( ParserContext.ANY_QUALIFIED, "\"type\": \"object\"" );
     }
 
-    private Object[] generateSingle (Field field, CompiledSet compiledSet) {
-        if (field.typeNameOfField.use.isPrimitive()) {
-            compiledSet.context.ifAnyValidateImport(field);
-            return primitiveTypes.get(field.typeNameOfField.name);
+    private Object[] singleTypeEntries( TypeNameOfField typeNameOfField, CompiledSet compiledSet,
+            boolean ifPrimitiveAddIndentation ) {
+        Object keyEntries[];
+        if( typeNameOfField.use.isPrimitive() ) {
+            compiledSet.context.ifAnyValidateImport( typeNameOfField );
+
+            keyEntries= primitiveTypes.get( typeNameOfField.name );
+            if( ifPrimitiveAddIndentation ) {
+                keyEntries= new Object[] { new Indented().addArray(keyEntries) };
+            }
         }
         else {
-            TypeDefinition fieldOrKeyType = field.typeNameOfField.resolve(compiledSet.context);
-            if( fieldOrKeyType==null ) {
-                throw new Error("Field " + field + " has unresolved type"
-                                        +(field.isMap ? " of keys: " : ": ")
-                                        +fieldOrKeyType.typeNameDefinition.name );
-            }
-            if (field.isMap) {throw new Error
-                TypeDefinition valueType = field.typeNameOfMapValues.resolve(compiledSet.context);
-                if( fieldOrKeyType==null ) {
-                    throw new Error("Field " + field + " has unresolved type of values: " +fieldOrKeyType.typeNameDefinition.name );
-                }
+            TypeDefinition fieldOrKeyType = typeNameOfField.resolve(compiledSet.context);
+            keyEntries= new Object[]{ compiledSet.generateOrReuse(fieldOrKeyType, this) };
+        }
+        return keyEntries;
+    }
+
+    private Object[] generateSingle (Field field, CompiledSet compiledSet) {
+        final Object keyEntries[]= singleTypeEntries( field.typeNameOfField, compiledSet, field.isMap );
+        if( field.typeNameOfField.use.isPrimitive() && !field.isMap ) {
+            return keyEntries;
+        }
+        else {
+            if (field.isMap) {
                 // https://stackoverflow.com/questions/17877619/json-schema-with-dynamic-key-field-in-mongodb
                 final List<Object> result= new ArrayList<>();
                 result.add( "\"type\": \"array\"" );
@@ -80,18 +89,17 @@ public class MessagesMongo implements Plugin {
                     pair.add( "\"bsonType\": \"object\",\n" );
                     pair.add( "\"additionalProperties\": false,\n" );
                     pair.add( "\"key\": {" );
-                        pair.add( compiledSet.generateOrReuse(fieldOrKeyType, this) );
+                        pair.addArray( keyEntries );
                     pair.add( "},\n" );
                     pair.add( "\"value\": {" );
-                        pair.add( compiledSet.generateOrReuse(valueType, this) );
+                        pair.addArray( singleTypeEntries(field.typeNameOfMapValues, compiledSet, true) );
                     pair.add( "}\n" );
                     result.add( pair );
                 result.add( "}");
                 return result.toArray();
-                //throw new UnsupportedOperationException("Maps are not supported");
             }
             else {
-                return new Object[]{ compiledSet.generateOrReuse(fieldOrKeyType, this) };
+                return keyEntries;
             }
         }
     }
