@@ -12,6 +12,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 // Watch out: Both Apache Commons CLI, and JavaCC-generated code, define class "ParseException"
 import org.apache.commons.cli.ParseException;
+import io.github.protopick.generate.FirstPerGroup;
 import io.github.protopick.generate.Indented;
 import io.github.protopick.generate.Plugin;
 import io.github.protopick.generate.Tools;
@@ -146,7 +147,7 @@ public class Run {
             compiledSet.generateAll(plugin);
 
             for (Map.Entry<TypeDefinition, Indented> entry: compiledSet.generated.entrySet()) {
-                // @TODO Move to the plugin?
+                FirstPerGroup.clear();
                 Indented out= plugin.wrap( entry.getKey(), entry.getValue() );
                 if (!out.isEmpty())
                     System.out.println( out );

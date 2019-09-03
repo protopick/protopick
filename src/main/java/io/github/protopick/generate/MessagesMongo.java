@@ -125,9 +125,11 @@ public class MessagesMongo implements Plugin {
         }
         else { // Message @TODO description of the message itself?
             Indented properties= new Indented();
-            // @TODO top level only
-            properties.add( "\"_id\": {\"bsonType\": \"objectId\"}" );
+            properties.add( new FirstPerGroup( "_id",
+                                               "\"_id\": {\"bsonType\": \"objectId\"}"
+                                               + (typeDefinition.fields.isEmpty() ? "" : ",\n")) );
 
+            boolean hadPreviousProperties= false;
             for (Field field: typeDefinition.fields) {
                 final Indented property= new Indented();
                 if (field.getInstruction()!=null) {//@TODO consider "title" instead
@@ -147,11 +149,14 @@ public class MessagesMongo implements Plugin {
                     }
                     fieldLevel.addArray( generateSingle(field, compiledSet) );
                 }
-                properties.add(",\n");
+                if( hadPreviousProperties )
+                    properties.add(",\n");
+                hadPreviousProperties= true;
                 properties.add( Tools.asStringLiteral(field.name), ": {");
                     properties.add( property );
                 properties.add( "}" );
             }
+
             Indented typeResult= new Indented();
             // https://docs.mongodb.com/manual/reference/operator/query/jsonSchema/#jsonschema-keywords > additionalProperties
             // https://stackoverflow.com/questions/48491556/mongodb-jsonschema-validation-additionalproperties

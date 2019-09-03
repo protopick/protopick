@@ -2,11 +2,14 @@ syntax = "proto3";
 
 package test;
 
+message Manager {}
+
 message Project {
   // Title
   string title = 1;
   // Estimate
   int32 estimate_person_hours = 2;
+  Manager manager = 3;
 }
 
 message Projects {
