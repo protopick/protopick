@@ -4,6 +4,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 public class Indented {
@@ -43,9 +44,10 @@ public class Indented {
 
     /** Add a new line only if there are any previous items in this Indented, and
      * if the immediate previous item is not an instance of Indented.
-     * However, if the immediate previous item is not an instance of Indented but its toString()
-     * ended with a new line (and any trailing white characters), this method still adds a newline.
      * If the next item is Indented, or if you call onNewLine() multiple times, that all generates one new line only.
+     * Also, if there's no other content in this Indented, then onNewLine() doesn't add any trailing newline.
+     * However, if the immediate previous item is not an instance of Indented but its toString()
+     * ended with a new line (and any trailing whitespace characters), this method still adds a newline.
      * */
     public Indented onNewLine() {
         return add(SEPARATOR);
@@ -65,9 +67,10 @@ public class Indented {
         final StringBuilder builder= new StringBuilder();
 
         boolean lastPartIndented=false, lastPartSeparator=false, firstPart=true; //lastPart
-        for( Object part: parts ) {
+        for( Iterator<Object> partIt=parts.iterator(); partIt.hasNext(); ) {
+            Object part=partIt.next();
             if( part==SEPARATOR ) {
-                if( !lastPartSeparator )
+                if( !lastPartSeparator && partIt.hasNext() )
                     builder.append('\n');
             }
             else if( part instanceof Indented) {

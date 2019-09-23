@@ -165,7 +165,7 @@ public class MessagesMongo implements Plugin {
             typeResult.add( "\"properties\": {" );
             typeResult.add( properties );
             typeResult.onNewLine().add( "}" );
-            return typeResult; // @OTOD outside: prepend with typeDefinition.typeNameDefinition.name
+            return typeResult;
         }
     }
 
